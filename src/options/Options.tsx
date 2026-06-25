@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { RotateCcw, Save } from 'lucide-react';
+import { Plus, RotateCcw, Save, X } from 'lucide-react';
 import { Goal, GoalStore } from '../types';
 import { getStore, setStore } from '../utils/storage';
+
+const MAX_GOALS = 10;
 
 const CATEGORIES = [
   { key: 'weekly' as const, label: 'WEEKLY GOALS', note: 'resets every Monday' },
@@ -9,15 +11,16 @@ const CATEGORIES = [
   { key: 'yearly' as const, label: 'YEARLY GOALS', note: '' },
 ];
 
-function goalTextsFromStore(goals: Goal[]): [string, string, string] {
-  return [goals[0]?.text ?? '', goals[1]?.text ?? '', goals[2]?.text ?? ''];
+function goalTextsFromStore(goals: Goal[]): string[] {
+  const texts = goals.map((g) => g.text);
+  return texts.length > 0 ? texts : [''];
 }
 
 export default function Options() {
   const [store, setLocalStore] = useState<GoalStore | null>(null);
-  const [weekly, setWeekly] = useState<[string, string, string]>(['', '', '']);
-  const [monthly, setMonthly] = useState<[string, string, string]>(['', '', '']);
-  const [yearly, setYearly] = useState<[string, string, string]>(['', '', '']);
+  const [weekly, setWeekly] = useState<string[]>(['']);
+  const [monthly, setMonthly] = useState<string[]>(['']);
+  const [yearly, setYearly] = useState<string[]>(['']);
   const [toast, setToast] = useState('');
 
   useEffect(() => {
@@ -29,9 +32,9 @@ export default function Options() {
     });
   }, []);
 
-  function buildGoals(texts: [string, string, string], existing: Goal[]): Goal[] {
+  function buildGoals(texts: string[], existing: Goal[]): Goal[] {
     return texts
-      .map((text, i) => {
+      .map((text) => {
         const trimmed = text.trim();
         if (!trimmed) return null;
         const existingGoal = existing.find((g) => g.text === trimmed);
@@ -42,6 +45,21 @@ export default function Options() {
         };
       })
       .filter(Boolean) as Goal[];
+  }
+
+  function updateAt(setter: React.Dispatch<React.SetStateAction<string[]>>, index: number, value: string) {
+    setter((prev) => prev.map((v, i) => (i === index ? value : v)));
+  }
+
+  function addGoal(setter: React.Dispatch<React.SetStateAction<string[]>>) {
+    setter((prev) => [...prev, '']);
+  }
+
+  function removeGoal(setter: React.Dispatch<React.SetStateAction<string[]>>, index: number) {
+    setter((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length === 0 ? [''] : next;
+    });
   }
 
   async function handleSave() {
@@ -78,6 +96,12 @@ export default function Options() {
     );
   }
 
+  const stateMap: Record<string, { values: string[]; setter: React.Dispatch<React.SetStateAction<string[]>> }> = {
+    weekly: { values: weekly, setter: setWeekly },
+    monthly: { values: monthly, setter: setMonthly },
+    yearly: { values: yearly, setter: setYearly },
+  };
+
   return (
     <div className="min-h-screen bg-background text-text-primary py-12 px-6">
       <div className="max-w-2xl mx-auto">
@@ -92,9 +116,8 @@ export default function Options() {
         <div className="border-t border-border-subtle mb-10" />
 
         {CATEGORIES.map(({ key, label, note }) => {
-          const values = key === 'weekly' ? weekly : key === 'monthly' ? monthly : yearly;
-          const setter =
-            key === 'weekly' ? setWeekly : key === 'monthly' ? setMonthly : setYearly;
+          const { values, setter } = stateMap[key];
+          const atMax = values.length >= MAX_GOALS;
 
           return (
             <div key={key} className="mb-10">
@@ -110,24 +133,55 @@ export default function Options() {
                     ({note})
                   </span>
                 )}
+                <span className="text-text-secondary text-xs ml-auto" style={{ opacity: 0.4 }}>
+                  {values.filter((v) => v.trim()).length}/{MAX_GOALS}
+                </span>
               </div>
-              <div className="flex flex-col gap-3">
-                {([0, 1, 2] as const).map((i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    value={values[i]}
-                    onChange={(e) => {
-                      const next = [...values] as [string, string, string];
-                      next[i] = e.target.value;
-                      setter(next);
-                    }}
-                    placeholder={`Goal ${i + 1}`}
-                    className="w-full bg-surface border border-border-subtle text-text-primary placeholder-text-secondary px-4 py-3 text-sm rounded focus:outline-none focus:border-accent transition-colors"
-                    style={{ borderRadius: '6px', fontFamily: 'Inter' }}
-                  />
+
+              <div className="flex flex-col gap-2">
+                {values.map((val, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={val}
+                      onChange={(e) => updateAt(setter, i, e.target.value)}
+                      placeholder={`Goal ${i + 1}`}
+                      className="flex-1 bg-surface border border-border-subtle text-text-primary placeholder-text-secondary px-4 py-3 text-sm focus:outline-none focus:border-accent transition-colors"
+                      style={{ borderRadius: '6px', fontFamily: 'Inter' }}
+                    />
+                    {values.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeGoal(setter, i)}
+                        className="flex-shrink-0 text-text-secondary hover:text-danger transition-colors p-1"
+                        title="Remove goal"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
+
+              {!atMax && (
+                <button
+                  type="button"
+                  onClick={() => addGoal(setter)}
+                  className="flex items-center gap-1.5 mt-3 text-text-secondary hover:text-accent transition-colors text-xs"
+                  style={{ fontFamily: 'Inter' }}
+                >
+                  <Plus size={13} />
+                  Add goal
+                </button>
+              )}
+              {atMax && (
+                <p
+                  className="mt-3 text-text-secondary text-xs"
+                  style={{ opacity: 0.5, fontFamily: 'Inter' }}
+                >
+                  Maximum {MAX_GOALS} goals reached
+                </p>
+              )}
             </div>
           );
         })}

@@ -4,8 +4,12 @@ import {
   Circle,
   ExternalLink,
   Pencil,
+  Plus,
   Search,
+  X,
 } from 'lucide-react';
+
+const MAX_GOALS = 10;
 import { Goal, GoalStore } from '../types';
 import { DEFAULT_STORE, getStore, setStore } from '../utils/storage';
 
@@ -148,15 +152,30 @@ interface OnboardingProps {
 }
 
 function Onboarding({ onComplete }: OnboardingProps) {
-  const [weekly, setWeekly] = useState<[string, string, string]>(['', '', '']);
-  const [monthly, setMonthly] = useState<[string, string, string]>(['', '', '']);
-  const [yearly, setYearly] = useState<[string, string, string]>(['', '', '']);
+  const [weekly, setWeekly] = useState<string[]>(['']);
+  const [monthly, setMonthly] = useState<string[]>(['']);
+  const [yearly, setYearly] = useState<string[]>(['']);
   const [error, setError] = useState('');
 
-  function buildGoals(texts: [string, string, string]): Goal[] {
+  function buildGoals(texts: string[]): Goal[] {
     return texts
       .filter((t) => t.trim())
       .map((text) => ({ id: crypto.randomUUID(), text: text.trim(), completed: false }));
+  }
+
+  function updateAt(setter: React.Dispatch<React.SetStateAction<string[]>>, index: number, value: string) {
+    setter((prev) => prev.map((v, i) => (i === index ? value : v)));
+  }
+
+  function addGoal(setter: React.Dispatch<React.SetStateAction<string[]>>) {
+    setter((prev) => [...prev, '']);
+  }
+
+  function removeGoal(setter: React.Dispatch<React.SetStateAction<string[]>>, index: number) {
+    setter((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      return next.length === 0 ? [''] : next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -198,38 +217,63 @@ function Onboarding({ onComplete }: OnboardingProps) {
             { label: 'Weekly Goals', note: 'resets every Monday', values: weekly, setter: setWeekly, required: true },
             { label: 'Monthly Goals', note: '', values: monthly, setter: setMonthly, required: false },
             { label: 'Yearly Goals', note: '', values: yearly, setter: setYearly, required: false },
-          ].map(({ label, note, values, setter, required }) => (
-            <div key={label} className="mb-8">
-              <div className="flex items-baseline gap-2 mb-3">
-                <SectionLabel>{label}</SectionLabel>
-                {note && (
-                  <span className="text-text-secondary text-xs" style={{ opacity: 0.5 }}>
-                    {note}
-                  </span>
-                )}
-                {required && (
-                  <span className="text-accent text-xs ml-auto">required</span>
+          ].map(({ label, note, values, setter, required }) => {
+            const atMax = values.length >= MAX_GOALS;
+            return (
+              <div key={label} className="mb-8">
+                <div className="flex items-baseline gap-2 mb-3">
+                  <SectionLabel>{label}</SectionLabel>
+                  {note && (
+                    <span className="text-text-secondary text-xs" style={{ opacity: 0.5 }}>
+                      {note}
+                    </span>
+                  )}
+                  {required && (
+                    <span className="text-accent text-xs ml-auto">required</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {values.map((val, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={(e) => updateAt(setter, i, e.target.value)}
+                        placeholder={`Goal ${i + 1}${i === 0 && required ? ' *' : ''}`}
+                        className="flex-1 bg-surface border border-border-subtle text-text-primary placeholder-text-secondary px-4 py-3 text-sm focus:outline-none focus:border-accent transition-colors"
+                        style={{ borderRadius: '6px', fontFamily: 'Inter' }}
+                      />
+                      {values.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeGoal(setter, i)}
+                          className="flex-shrink-0 text-text-secondary hover:text-danger transition-colors p-1"
+                          title="Remove goal"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {!atMax ? (
+                  <button
+                    type="button"
+                    onClick={() => addGoal(setter)}
+                    className="flex items-center gap-1.5 mt-3 text-text-secondary hover:text-accent transition-colors text-xs"
+                    style={{ fontFamily: 'Inter' }}
+                  >
+                    <Plus size={13} />
+                    Add goal
+                  </button>
+                ) : (
+                  <p className="mt-3 text-text-secondary text-xs" style={{ opacity: 0.5, fontFamily: 'Inter' }}>
+                    Maximum {MAX_GOALS} goals reached
+                  </p>
                 )}
               </div>
-              <div className="flex flex-col gap-2">
-                {([0, 1, 2] as const).map((i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    value={values[i]}
-                    onChange={(e) => {
-                      const next = [...values] as [string, string, string];
-                      next[i] = e.target.value;
-                      setter(next);
-                    }}
-                    placeholder={`Goal ${i + 1}${i === 0 && required ? ' *' : ''}`}
-                    className="w-full bg-surface border border-border-subtle text-text-primary placeholder-text-secondary px-4 py-3 text-sm focus:outline-none focus:border-accent transition-colors"
-                    style={{ borderRadius: '6px', fontFamily: 'Inter' }}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {error && (
             <p className="text-danger text-sm mb-4">{error}</p>
