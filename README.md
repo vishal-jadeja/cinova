@@ -56,13 +56,18 @@ Replace your browser's new tab with a focused goal dashboard. Every tab open put
 
 ## Screenshots
 
-### Goals
-<img src="https://github.com/user-attachments/assets/681a6502-dce7-4807-a5d2-ada084f789dd" alt="Goals editing page" width="100%" />
-
----
-
-### Settings
-<img src="https://github.com/user-attachments/assets/0112062b-9c53-4f0f-8287-77eca324f921" alt="Settings page with background picker" width="100%" />
+<table>
+  <tr>
+    <td width="50%">
+      <img src="https://github.com/user-attachments/assets/681a6502-dce7-4807-a5d2-ada084f789dd" alt="Goals editing page" width="100%" />
+      <p align="center"><sub>Goals</sub></p>
+    </td>
+    <td width="50%">
+      <img src="https://github.com/user-attachments/assets/0112062b-9c53-4f0f-8287-77eca324f921" alt="Settings page with background picker" width="100%" />
+      <p align="center"><sub>Settings</sub></p>
+    </td>
+  </tr>
+</table>
 
 ---
 
