@@ -74,9 +74,11 @@ function GoalCard({
 
   return (
     <div style={{
-      border: `1px solid ${focused ? T.cardBorderFocus : T.cardBorder}`,
+      border: `1px solid ${focused ? T.cardBorderFocus : 'rgba(255,255,255,0.09)'}`,
       borderRadius: '6px',
-      background: 'rgba(255,255,255,0.03)',
+      background: 'rgba(18,16,14,0.55)',
+      backdropFilter: 'blur(16px) saturate(1.4)',
+      WebkitBackdropFilter: 'blur(16px) saturate(1.4)',
       overflow: 'hidden',
       transition: 'border-color 180ms',
       animation: 'fadeIn 0.18s ease-out',
@@ -280,14 +282,14 @@ export default function Options() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto' }}>
+    <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto', background: 'rgba(10,10,10,0.18)' }}>
       {/* Background */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${BG_URL}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: viewMode === 'grid' ? '900px' : '600px', margin: '0 auto', padding: '52px 40px 80px', background: 'rgba(10,10,10,0.4)', minHeight: '100vh' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: viewMode === 'grid' ? '900px' : '600px', margin: '0 auto', padding: '52px 40px 80px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -299,14 +301,14 @@ export default function Options() {
             onMouseLeave={e => (e.currentTarget.style.opacity = '0.55')}>
             {viewMode === 'grid' ? (
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
                 <rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
                 <rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
                 <rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
             )}
           </button>

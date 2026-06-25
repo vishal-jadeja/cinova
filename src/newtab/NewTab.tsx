@@ -415,9 +415,9 @@ function Dashboard({ store, onToggleGoal }: {
           <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 12px', display: 'flex', alignItems: 'center' }}>
             <button onClick={() => { window.location.href = chrome.runtime.getURL('src/settings/index.html'); }}
               title="Settings"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.55, transition: 'opacity 150ms', padding: '4px 6px', fontSize: '11px', letterSpacing: '0.06em', fontFamily: FONT_SANS }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-              onMouseLeave={e => (e.currentTarget.style.opacity = '0.55')}>
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(232,232,232,0.55)', display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 150ms', padding: '4px 6px', fontSize: '11px', letterSpacing: '0.06em', fontFamily: FONT_SANS }}
+              onMouseEnter={e => (e.currentTarget.style.color = T.text)}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(232,232,232,0.55)')}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.3" />
                 <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />

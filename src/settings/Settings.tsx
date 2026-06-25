@@ -11,7 +11,6 @@ const BG_URLS = [
   'https://images.unsplash.com/photo-1509316785289-025f5b846b35?auto=format&fit=crop&w=400&q=60',
   'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=400&q=60',
   'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=400&q=60',
-  'https://images.unsplash.com/photo-1439853949212-36089c9a8957?auto=format&fit=crop&w=400&q=60',
   'https://images.unsplash.com/photo-1418985991508-e47386d96a71?auto=format&fit=crop&w=400&q=60',
 ];
 const BG_URL = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80';
@@ -30,25 +29,32 @@ const T = {
 export default function Settings() {
   const [store, setLocalStore] = useState<GoalStore | null>(null);
   const [customBg, setCustomBg] = useState('');
-  const [autoBackground, setAutoBackground] = useState(false);
+  const [bgMode, setBgMode] = useState<'custom' | 'auto'>('auto');
+  const [selectedBgIndex, setSelectedBgIndex] = useState<number | null>(null);
   const [savedVisible, setSavedVisible] = useState(false);
 
   useEffect(() => {
     getStore().then(s => {
       setLocalStore(s);
       setCustomBg(s.backgroundImage ?? '');
-      setAutoBackground(s.autoBackground ?? false);
+      setBgMode(s.autoBackground ? 'auto' : 'custom');
+      setSelectedBgIndex(s.backgroundIndex ?? null);
     });
   }, []);
 
   async function handleSave() {
     if (!store) return;
     const wasAutoOff = !store.autoBackground;
+    const isAuto = bgMode === 'auto';
     const newStore: GoalStore = {
       ...store,
-      ...(customBg.trim() ? { backgroundImage: customBg.trim() } : { backgroundImage: undefined }),
-      autoBackground,
-      ...(autoBackground && wasAutoOff ? { backgroundIndex: undefined, lastBackgroundChange: undefined } : {}),
+      ...(bgMode === 'custom' && customBg.trim() ? { backgroundImage: customBg.trim() } : bgMode === 'custom' ? { backgroundImage: undefined } : {}),
+      autoBackground: isAuto,
+      ...(isAuto && selectedBgIndex !== null
+        ? { backgroundIndex: selectedBgIndex, lastBackgroundChange: undefined }
+        : isAuto && wasAutoOff
+          ? { backgroundIndex: undefined, lastBackgroundChange: undefined }
+          : {}),
     };
     await setStore(newStore);
     setLocalStore(newStore);
@@ -72,14 +78,14 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto' }}>
+    <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto', background: 'rgba(10,10,10,0.18)' }}>
       {/* Background */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${customBg.trim() || BG_URL}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px', margin: '0 auto', padding: '52px 40px 80px', background: 'rgba(10,10,10,0.4)', minHeight: '100vh' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: '880px', margin: '0 auto', padding: '52px 40px 80px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -94,68 +100,130 @@ export default function Settings() {
 
         <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: '32px', color: '#ffffff' }}>Settings</h1>
 
-        {/* Background image */}
-        <div style={{ padding: '22px 24px', border: `1px solid ${T.border}`, borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', background: T.surface }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Background image</div>
-          <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>Paste any image URL. The blur is applied automatically.</div>
-          <input
-            type="text"
-            value={customBg}
-            onChange={e => setCustomBg(e.target.value)}
-            placeholder={BG_URL}
-            style={{ marginTop: '4px', width: '100%', background: 'none', border: `1px solid ${T.border2}`, borderRadius: '4px', padding: '10px 14px', fontSize: '13px', color: T.text, fontFamily: FONT_SANS, outline: 'none', letterSpacing: '0.01em', transition: 'border-color 150ms', boxSizing: 'border-box' }}
-            onFocus={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
-            onBlur={e => (e.currentTarget.style.borderColor = T.border2)}
-          />
-          {customBg.trim() && (
-            <button onClick={() => setCustomBg('')}
-              style={{ marginTop: '2px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '4px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS, transition: 'border-color 150ms' }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = T.border2)}>
-              Reset to default
-            </button>
-          )}
-        </div>
+        {/* Two-column grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', alignItems: 'start', marginBottom: '28px' }}>
 
-        {/* Auto-change weekly */}
-        <div style={{ padding: '22px 24px', border: `1px solid ${T.border}`, borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', background: T.surface }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-            <div>
-              <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em', marginBottom: '4px' }}>Auto-change background weekly</div>
-              <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>
-                Cycles through curated landscapes each week when you open a new tab.
-                {autoBackground && customBg.trim() && (
-                  <span style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: T.amber, opacity: 0.8 }}>
-                    Auto-rotate will override your custom URL.
-                  </span>
-                )}
+        {/* Background — unified card (left column) */}
+        <div style={{ border: `1px solid ${T.border}`, borderRadius: '8px', overflow: 'hidden', background: T.surface }}>
+
+          {/* Live preview */}
+          <div style={{ height: '160px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{
+              position: 'absolute', inset: '-20px',
+              backgroundImage: `url('${bgMode === 'auto' ? BG_URLS[selectedBgIndex ?? store.backgroundIndex ?? 0] : (customBg.trim() || BG_URL)}')`,
+              backgroundSize: 'cover', backgroundPosition: 'center',
+              filter: 'blur(8px)', transform: 'scale(1.06)',
+              transition: 'background-image 400ms',
+            }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.52)' }} />
+            <div style={{ position: 'absolute', bottom: '14px', left: '18px', fontSize: '11px', letterSpacing: '0.08em', color: 'rgba(232,232,232,0.45)', fontWeight: 600, textTransform: 'uppercase' }}>
+              Preview
+            </div>
+          </div>
+
+          {/* Card body */}
+          <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Background</div>
+              {/* Mode tabs */}
+              <div style={{ display: 'flex', background: 'rgba(232,232,232,0.06)', borderRadius: '6px', padding: '3px', gap: '2px' }}>
+                {(['auto', 'custom'] as const).map(mode => (
+                  <button key={mode} onClick={() => setBgMode(mode)}
+                    style={{
+                      background: bgMode === mode ? 'rgba(232,232,232,0.12)' : 'none',
+                      border: 'none', borderRadius: '4px',
+                      padding: '6px 14px', fontSize: '11px', fontWeight: 600,
+                      color: bgMode === mode ? '#ffffff' : T.muted,
+                      letterSpacing: '0.04em', cursor: 'pointer',
+                      fontFamily: FONT_SANS,
+                      borderBottom: bgMode === mode ? `2px solid ${T.amber}` : '2px solid transparent',
+                      transition: 'color 150ms, background 150ms',
+                    }}>
+                    {mode === 'custom' ? 'Custom' : 'Auto-rotate'}
+                  </button>
+                ))}
               </div>
             </div>
-            {/* Toggle pill */}
-            <div onClick={() => setAutoBackground(v => !v)}
-              style={{ flexShrink: 0, width: '44px', height: '24px', borderRadius: '12px', background: autoBackground ? T.amber : 'rgba(232,232,232,0.14)', cursor: 'pointer', position: 'relative', transition: 'background 200ms' }}>
-              <div style={{ position: 'absolute', top: '3px', left: autoBackground ? '23px' : '3px', width: '18px', height: '18px', borderRadius: '50%', background: autoBackground ? T.accentText : T.text, transition: 'left 200ms', opacity: autoBackground ? 1 : 0.7 }} />
-            </div>
-          </div>
-          {/* Thumbnail preview strip */}
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', marginTop: '4px', msOverflowStyle: 'none', scrollbarWidth: 'none' } as React.CSSProperties}>
-            {BG_URLS.map((url, i) => (
-              <div key={i} style={{
-                flexShrink: 0, width: '96px', height: '64px', borderRadius: '4px',
-                backgroundImage: `url('${url}')`, backgroundSize: 'cover', backgroundPosition: 'center',
-                outline: autoBackground && store.backgroundIndex === i ? `2px solid ${T.amber}` : `1px solid ${T.border}`,
-                outlineOffset: autoBackground && store.backgroundIndex === i ? '2px' : '0px',
-                transition: 'outline 200ms, outline-offset 200ms',
-              }} />
-            ))}
+
+            {/* Custom mode */}
+            {bgMode === 'custom' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    value={customBg}
+                    onChange={e => setCustomBg(e.target.value)}
+                    placeholder="Paste an image URL…"
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.3)', border: `1px solid ${T.border2}`, borderRadius: '5px', padding: '10px 38px 10px 14px', fontSize: '13px', color: T.text, fontFamily: FONT_SANS, outline: 'none', letterSpacing: '0.01em', transition: 'border-color 150ms', boxSizing: 'border-box' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = T.border2)}
+                  />
+                  {customBg.trim() && (
+                    <button onClick={() => setCustomBg('')}
+                      style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: T.muted, cursor: 'pointer', fontSize: '14px', padding: '2px 4px', lineHeight: 1, transition: 'color 150ms' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = T.text)}
+                      onMouseLeave={e => (e.currentTarget.style.color = T.muted)}>
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontSize: '12px', color: T.muted, lineHeight: 1.5 }}>
+                  Paste any direct image URL. Blur is applied automatically.
+                </div>
+              </div>
+            )}
+
+            {/* Auto-rotate mode */}
+            {bgMode === 'auto' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px 2px 6px', msOverflowStyle: 'none', scrollbarWidth: 'none' } as React.CSSProperties}>
+                  {BG_URLS.map((url, i) => {
+                    const isActive = (selectedBgIndex ?? store.backgroundIndex) === i;
+                    return (
+                      <div key={i} onClick={() => setSelectedBgIndex(i)} style={{
+                        flexShrink: 0, width: '120px', height: '80px', borderRadius: '5px',
+                        backgroundImage: `url('${url}')`, backgroundSize: 'cover', backgroundPosition: 'center',
+                        border: isActive ? `2px solid ${T.amber}` : `1px solid ${T.border}`,
+                        transition: 'border 200ms, filter 150ms',
+                        cursor: 'pointer',
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(1.2)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.filter = 'brightness(1)'; }}
+                      />
+                    );
+                  })}
+                </div>
+                <div style={{ fontSize: '12px', color: T.muted, lineHeight: 1.5 }}>
+                  Cycles through curated landscapes — a new one each week when you open a new tab.
+                  {store.backgroundIndex != null && (
+                    <span style={{ color: T.amber, marginLeft: '6px', opacity: 0.85 }}>Amber ring = current week.</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Divider */}
-        <div style={{ height: '1px', background: T.border, marginBottom: '28px', marginTop: '8px' }} />
+        {/* Right column — actions */}
+        <div style={{ position: 'sticky', top: '52px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+          {/* Reset weekly */}
+          <div style={{ padding: '22px 24px', border: `1px solid ${T.border}`, borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '8px', background: T.surface }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Reset weekly progress</div>
+            <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>Unchecks all weekly goals without deleting them.</div>
+            <button onClick={handleResetWeekly}
+              style={{ marginTop: '4px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '4px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS, transition: 'border-color 150ms' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = T.border2)}>
+              Reset weekly progress
+            </button>
+          </div>
+
+        </div>
+        </div>{/* end grid */}
 
         {/* Save */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '40px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button onClick={handleSave}
             style={{ padding: '12px 28px', background: T.accent, color: T.accentText, border: 'none', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '4px', cursor: 'pointer', fontFamily: FONT_SANS }}>
             Save changes
@@ -165,17 +233,6 @@ export default function Settings() {
           </span>
         </div>
 
-        {/* Reset weekly */}
-        <div style={{ padding: '22px 24px', border: `1px solid ${T.border}`, borderRadius: '6px', display: 'inline-flex', flexDirection: 'column', gap: '8px', minWidth: '320px', background: T.surface }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Reset weekly progress</div>
-          <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>Unchecks all weekly goals without deleting them.</div>
-          <button onClick={handleResetWeekly}
-            style={{ marginTop: '4px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '4px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS, transition: 'border-color 150ms' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = T.border2)}>
-            Reset weekly progress
-          </button>
-        </div>
 
       </div>
     </div>
