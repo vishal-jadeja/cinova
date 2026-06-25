@@ -1,92 +1,171 @@
+<div align="center">
+
+<img src="public/CinovaLogo.png" alt="Cinova" width="72" />
+
 # Cinova
 
-A Chrome/Brave browser extension that replaces the new tab page with a goal confrontation screen. Every time you open a new tab, you see your weekly, monthly, and yearly goals — and must acknowledge them before browsing.
+**Weekly, monthly, and yearly goals — confronting you every new tab.**
 
-No accounts. No backend. Everything lives in `chrome.storage.sync`.
+[![Chrome](https://img.shields.io/badge/Chrome-Extension-4285F4?style=flat&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/)
+[![Manifest V3](https://img.shields.io/badge/Manifest-V3-34A853?style=flat)](https://developer.chrome.com/docs/extensions/mv3/intro/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev)
+
+</div>
 
 ---
 
-## Screenshots
+Replace your browser's new tab with a focused goal dashboard. Every tab open puts your goals front and center — no accounts, no backend, everything stored in `chrome.storage.sync`.
 
-> _Add screenshots here after loading the extension_
+<br />
+
+<div align="center">
+  <img src="docs/screenshots/newtab.png" alt="Cinova new tab dashboard" width="100%" style="border-radius:8px" />
+  <br /><sub>New tab dashboard — replace with your screenshot</sub>
+</div>
 
 ---
 
 ## Features
 
-- **Daily gate** — full-screen goal review on every new tab, once per day
-- **Week erosion bar** — visual Mon–Sun progress bar showing how much of the week is gone
-- **Goal toggles** — mark goals complete/incomplete directly from the dashboard sidebar
-- **Auto-reset** — weekly goals reset every Monday; daily acknowledgment resets every midnight
-- **Options page** — edit goals anytime via the extension icon or sidebar pencil button
-- **Google search** — search bar in the dashboard main area
+### Goals
+- **Three timeframes** — weekly, monthly, and yearly goals on one screen
+- **Inline completion** — check off goals without leaving the new tab
+- **Notes per goal** — add context, links, and resources to any goal
+- **Expandable descriptions** — click a goal's note preview to read the full text
+- **Clickable links** — URLs in notes render as `↗ hostname` links, always visible below the goal
+- **Up to 10 goals** per timeframe
+- **Weekly auto-reset** — weekly goals uncheck when a new ISO week begins
 
-## Tech stack
+### Background
+- **Auto-rotate** — cycles through 8 curated landscapes, one new image per week
+- **Manual pick** — click any thumbnail in Settings to lock in a specific image
+- **Custom image** — paste any direct image URL to use your own background
+- **Live preview** — see the result before saving
+- **Blur + dark overlay** — text stays readable over any background
 
-- React 18 + TypeScript
-- Vite (multi-page build)
-- Tailwind CSS v3
-- Lucide React (icons)
-- Manifest V3 / `chrome.storage.sync`
+### Interface
+- **Resizable sidebar** — drag the edge to your preferred width; persists across sessions
+- **Live clock** — large monospace HH:MM display with running seconds
+- **Week tracker** — 7-day bar showing exactly where you are in the current week
+- **Google Search** — search bar built into the dashboard
+- **Grid / list view** — toggle layout on the Goals editing page
+- **Unsaved changes guard** — full-screen modal on both Goals and Settings pages prevents accidental data loss
 
 ---
 
-## Getting started
+## Screenshots
+
+### New Tab
+<img src="docs/screenshots/newtab.png" alt="New tab page with sidebar goals and clock" width="100%" />
+
+> Replace `docs/screenshots/newtab.png` with a screenshot of the new tab page.
+
+---
+
+### Goals
+<img src="docs/screenshots/goals.png" alt="Goals editing page" width="100%" />
+
+> Replace `docs/screenshots/goals.png` with a screenshot of the goals editing page.
+
+---
+
+### Settings
+<img src="docs/screenshots/settings.png" alt="Settings page with background picker" width="100%" />
+
+> Replace `docs/screenshots/settings.png` with a screenshot of the settings page.
+
+---
+
+## Installation
+
+Cinova is not on the Chrome Web Store yet — load it manually as an unpacked extension.
 
 ### Prerequisites
 
 - Node.js 18+
 - Chrome or Brave browser
 
-### Install & build
+### Steps
+
+**1. Clone and build**
 
 ```bash
+git clone https://github.com/your-username/cinova.git
+cd cinova
 npm install
 npm run build
 ```
 
-### Load in Chrome/Brave
+**2. Load in Chrome / Brave**
 
-1. Go to `chrome://extensions` (or `brave://extensions`)
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked** → select the `dist/` folder
-4. Open a new tab
+1. Open `chrome://extensions` (or `brave://extensions`)
+2. Enable **Developer mode** — top-right toggle
+3. Click **Load unpacked**
+4. Select the `dist/` folder inside the project directory
+
+**3. Open a new tab**
+
+Cinova replaces your new tab page immediately.
+
+---
+
+## Usage
+
+### New Tab
+
+Goals appear in the left sidebar, grouped by timeframe. Click a **checkbox** to complete a goal. Click the **muted note text** below a goal to expand its full description. URLs in notes appear as `↗ hostname` links and open in a new tab.
+
+Use the **pencil icon** (top-right of the sidebar) to edit goals. Use the **gear icon** (sidebar footer) to open Settings.
+
+### Goals page
+
+Add, edit, and remove goals for each timeframe. Each goal has a notes field — paste URLs there and they become clickable links in the sidebar. Toggle **grid / list** layout with the icon in the header. Click **Save changes** to persist. Navigating away with unsaved edits shows a confirmation modal.
+
+### Settings page
+
+Pick between **Auto-rotate** (weekly curated landscapes) and **Custom** (paste your own image URL) background modes. In Auto-rotate, click any thumbnail to lock in a specific image. A **live preview** shows the result. Use **Reset weekly progress** to uncheck all weekly goals without deleting them.
 
 ---
 
 ## Development
 
 ```bash
-npm run build       # production build → dist/
-npm run dev         # Vite dev server (for component previewing only — not the extension)
+npm install       # install dependencies
+npm run dev       # Vite dev server (component preview only — not the extension)
+npm run build     # production build → dist/
 ```
 
-After any code change, run `npm run build` and click the refresh icon on the extension card in `chrome://extensions`.
+After any code change, run `npm run build` then click the **refresh icon** on the Cinova card in `chrome://extensions`.
 
----
-
-## Project structure
+### Project structure
 
 ```
 src/
-├── newtab/          # New tab page (gate + dashboard)
-├── options/         # Goal settings page
-├── background/      # Service worker (daily reset, Monday weekly reset)
-├── types/           # Shared TypeScript types
-└── utils/           # chrome.storage.sync helpers
+├── newtab/      # New tab dashboard (sidebar + clock + search)
+├── options/     # Goals editing page
+├── settings/    # Settings page (background, weekly reset)
+├── utils/       # chrome.storage.sync helpers
+└── types/       # Shared TypeScript interfaces
 public/
-└── manifest.json    # Extension manifest (copied to dist/)
+├── manifest.json
+└── CinovaLogo.png
 ```
 
 ---
 
-## Goal limits
+## Tech Stack
 
-| Category | Max goals | Resets |
-|----------|-----------|--------|
-| Weekly   | 3         | Every Monday |
-| Monthly  | 3         | Never (manual only) |
-| Yearly   | 3         | Never (manual only) |
+| Layer | Technology |
+|---|---|
+| Framework | React 19 + TypeScript 6 |
+| Build tool | Vite 8 (multi-page) |
+| Extension API | Chrome Manifest V3 |
+| Storage | `chrome.storage.sync` |
+| Styling | Inline styles |
+| Icons | Lucide React |
+| Fonts | Space Grotesk, Space Mono |
 
 ---
 
