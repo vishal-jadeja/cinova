@@ -33,10 +33,11 @@ function todayIndex(): number {
 }
 
 // ─── Background ───────────────────────────────────────────────────────────────
-function Background() {
+function Background({ url }: { url?: string }) {
+  const src = url || BG_URL;
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${BG_URL}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
+      <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${src}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
     </div>
   );
@@ -72,23 +73,6 @@ function WeekTracker({ center = false }: { center?: boolean }) {
       </span>
     </div>
   );
-}
-
-// ─── Linkify ─────────────────────────────────────────────────────────────────
-function linkify(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  const re = /https?:\/\/[^\s]+/g;
-  let last = 0; let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    const url = m[0];
-    parts.push(<a key={m.index} href={url} target="_blank" rel="noopener noreferrer"
-      style={{ color: '#E8A838', textDecoration: 'underline', textUnderlineOffset: '2px' }}
-      onClick={e => e.stopPropagation()}>{url}</a>);
-    last = m.index + url.length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
 }
 
 // ─── Checkbox ────────────────────────────────────────────────────────────────
@@ -241,7 +225,7 @@ function Onboarding({ onComplete }: { onComplete: (patch: Partial<GoalStore>) =>
           <div key={label} style={{ marginBottom: '40px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, fontFamily: FONT_MONO }}>{label}</span>
-              <span style={{ fontSize: '10px', color: T.muted, opacity: 0.4, fontFamily: FONT_MONO }}>{drafts.filter(d => d.text.trim()).length}/{MAX_GOALS}</span>
+              {/* <span style={{ fontSize: '10px', color: T.muted, opacity: 0.4, fontFamily: FONT_MONO }}>{drafts.filter(d => d.text.trim()).length}/{MAX_GOALS}</span> */}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {drafts.map((draft, i) => (
@@ -302,11 +286,6 @@ function SidebarSection({ label, goals, onToggle }: { label: string; goals: Goal
             <span style={{ display: 'block', fontSize: '12.5px', lineHeight: 1.42, opacity: g.completed ? 0.3 : 1, textDecoration: g.completed ? 'line-through' : 'none', transition: 'opacity 0.15s' }}>
               {g.text}
             </span>
-            {g.description && !g.completed && (
-              <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: 'rgba(232,232,232,0.65)', lineHeight: 1.55, wordBreak: 'break-word' }}>
-                {linkify(g.description)}
-              </p>
-            )}
           </div>
         </div>
       ))}
@@ -325,13 +304,36 @@ function Dashboard({ store, onToggleGoal }: {
   const dateStr = `${WEEK_LONG[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    Number(localStorage.getItem('cinova-sidebar-width')) || 256
+  );
+  const sidebarWidthRef = React.useRef(sidebarWidth);
+  sidebarWidthRef.current = sidebarWidth;
+
+  function onDragStart(e: React.MouseEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = sidebarWidthRef.current;
+    function onMove(ev: MouseEvent) {
+      const next = Math.max(180, Math.min(480, startW + ev.clientX - startX));
+      setSidebarWidth(next);
+      sidebarWidthRef.current = next;
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      localStorage.setItem('cinova-sidebar-width', String(sidebarWidthRef.current));
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1, display: 'flex', flexDirection: 'column', color: T.text, fontFamily: FONT_SANS, animation: 'fadeIn 0.35s cubic-bezier(0.16,1,0.3,1)' }}>
-      <Background />
+      <Background url={store.backgroundImage} />
 
       {/* Header strip */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', padding: '22px 56px 18px 56px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', padding: '18px 36px 14px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
         <img src={logoFull} alt="Cinova" style={{ height: '26px', display: 'block', opacity: 0.92 }} />
       </div>
 
@@ -339,7 +341,7 @@ function Dashboard({ store, onToggleGoal }: {
       <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', minHeight: 0 }}>
 
         {/* Sidebar */}
-        <div style={{ position: 'relative', width: '256px', minWidth: '256px', display: 'flex', flexDirection: 'column', borderRight: `1px solid ${T.border}`, background: T.surface }}>
+        <div style={{ position: 'relative', width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', borderRight: `1px solid ${T.border}`, background: T.surface }}>
           {/* Sidebar header with edit icon top-right */}
           <button onClick={() => { window.location.href = chrome.runtime.getURL('src/options/index.html'); }}
             title="Edit goals"
@@ -351,6 +353,11 @@ function Dashboard({ store, onToggleGoal }: {
               <path d="M8 3.5L10.5 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
             </svg>
           </button>
+          {/* Drag handle */}
+          <div onMouseDown={onDragStart}
+            style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '4px', cursor: 'col-resize', zIndex: 2, background: 'transparent', transition: 'background 150ms' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,232,232,0.12)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')} />
           <div style={{ flex: 1, padding: '20px 20px', overflowY: 'auto', minHeight: 0 }}>
             <SidebarSection label="This Week" goals={store.weekly} onToggle={id => onToggleGoal('weekly', id)} />
             <SidebarSection label="This Month" goals={store.monthly} onToggle={id => onToggleGoal('monthly', id)} />

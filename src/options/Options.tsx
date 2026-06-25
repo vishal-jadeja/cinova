@@ -150,13 +150,14 @@ function GoalCard({
 
 // ─── Category Section ─────────────────────────────────────────────────────────
 function CategorySection({
-  label, values, setter, expanded, setExpanded,
+  label, values, setter, expanded, setExpanded, style,
 }: {
   label: string;
   values: GoalDraft[];
   setter: Setter;
   expanded: Set<string>;
   setExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
+  style?: React.CSSProperties;
 }) {
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
 
@@ -184,13 +185,10 @@ function CategorySection({
   const atMax = values.length >= MAX_GOALS;
 
   return (
-    <div style={{ marginBottom: '48px' }}>
+    <div style={{ marginBottom: '48px', ...style }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
         <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, fontFamily: FONT_MONO }}>
           {label}
-        </span>
-        <span style={{ fontSize: '10px', color: T.muted, opacity: 0.4, fontFamily: FONT_MONO }}>
-          {values.filter(d => d.text.trim()).length}/{MAX_GOALS}
         </span>
       </div>
 
@@ -211,15 +209,11 @@ function CategorySection({
         ))}
       </div>
 
-      {!atMax ? (
+      {!atMax && (
         <button type="button" onClick={addDraft}
           style={{ marginTop: '10px', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: '12px', letterSpacing: '0.06em', padding: '6px 0', fontFamily: FONT_SANS, opacity: 0.7, display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span> Add goal
         </button>
-      ) : (
-        <p style={{ marginTop: '10px', fontSize: '11px', color: T.muted, opacity: 0.4, fontFamily: FONT_MONO, letterSpacing: '0.06em' }}>
-          Max {MAX_GOALS} goals
-        </p>
       )}
     </div>
   );
@@ -233,6 +227,16 @@ export default function Options() {
   const [yearly, setYearly] = useState<GoalDraft[]>([emptyDraft()]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [savedVisible, setSavedVisible] = useState(false);
+  const [customBg, setCustomBg] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() =>
+    (localStorage.getItem('cinova-options-view') as 'grid' | 'list') ?? 'grid'
+  );
+
+  function toggleView() {
+    const next = viewMode === 'grid' ? 'list' : 'grid';
+    setViewMode(next);
+    localStorage.setItem('cinova-options-view', next);
+  }
 
   useEffect(() => {
     getStore().then(s => {
@@ -242,6 +246,7 @@ export default function Options() {
       const y = draftsFromGoals(s.yearly);
       setWeekly(w); setMonthly(mo); setYearly(y);
       setExpanded(new Set([...w, ...mo, ...y].filter(d => d.description.trim()).map(d => d.id)));
+      setCustomBg(s.backgroundImage ?? '');
     });
   }, []);
 
@@ -252,6 +257,7 @@ export default function Options() {
       weekly: buildGoals(weekly),
       monthly: buildGoals(monthly),
       yearly: buildGoals(yearly),
+      ...(customBg.trim() ? { backgroundImage: customBg.trim() } : { backgroundImage: undefined }),
     };
     await setStore(newStore);
     setLocalStore(newStore);
@@ -284,15 +290,33 @@ export default function Options() {
     <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto' }}>
       {/* Background */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${BG_URL}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
+        <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${customBg.trim() || BG_URL}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px', margin: '0 auto', padding: '52px 40px 80px' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: viewMode === 'grid' ? 'none' : '600px', margin: '0 auto', padding: viewMode === 'grid' ? '52px 56px 80px' : '52px 40px 80px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <img src={logoMark} alt="Cinova" style={{ height: '24px', display: 'block', opacity: 0.9 }} />
+          {/* View toggle */}
+          <button onClick={toggleView} title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', opacity: 0.55, transition: 'opacity 150ms', padding: '4px', marginLeft: 'auto', marginRight: '12px' }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0.55')}>
+            {viewMode === 'grid' ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
+                <rect x="9" y="1" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
+                <rect x="1" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
+                <rect x="9" y="9" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="1.3" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
           <button onClick={() => { window.location.href = chrome.runtime.getURL('src/newtab/index.html'); }}
             style={{ background: 'none', border: `1px solid ${T.border2}`, padding: '8px 16px', fontSize: '11px', color: T.muted, letterSpacing: '0.06em', borderRadius: '4px', fontWeight: 500, cursor: 'pointer', fontFamily: FONT_SANS, transition: 'opacity 150ms, border-color 150ms' }}
             onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
@@ -302,17 +326,33 @@ export default function Options() {
         </div>
         <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: '24px' }}>Goals</h1>
 
-        {/* Goal sections — vertical stacked */}
-        {sections.map(({ key, label, values, setter }) => (
-          <CategorySection
-            key={key}
-            label={label}
-            values={values}
-            setter={setter}
-            expanded={expanded}
-            setExpanded={setExpanded}
-          />
-        ))}
+        {/* Goal sections */}
+        {viewMode === 'grid' ? (
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', marginBottom: '48px' }}>
+            {sections.map(({ key, label, values, setter }) => (
+              <CategorySection
+                key={key}
+                label={label}
+                values={values}
+                setter={setter}
+                expanded={expanded}
+                setExpanded={setExpanded}
+                style={{ flex: 1, minWidth: 0, marginBottom: 0 }}
+              />
+            ))}
+          </div>
+        ) : (
+          sections.map(({ key, label, values, setter }) => (
+            <CategorySection
+              key={key}
+              label={label}
+              values={values}
+              setter={setter}
+              expanded={expanded}
+              setExpanded={setExpanded}
+            />
+          ))
+        )}
 
         {/* Divider */}
         <div style={{ height: '1px', background: T.border, marginBottom: '28px' }} />
@@ -326,6 +366,29 @@ export default function Options() {
           <span style={{ fontSize: '12px', color: T.muted, opacity: savedVisible ? 1 : 0, transition: 'opacity 0.4s', letterSpacing: '0.06em' }}>
             ✓ Saved
           </span>
+        </div>
+
+        {/* Background image */}
+        <div style={{ padding: '22px 24px', border: `1px solid ${T.border}`, borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Background image</div>
+          <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>Paste any image URL. The blur is applied automatically.</div>
+          <input
+            type="text"
+            value={customBg}
+            onChange={e => setCustomBg(e.target.value)}
+            placeholder={BG_URL}
+            style={{ marginTop: '4px', width: '100%', background: 'none', border: `1px solid ${T.border2}`, borderRadius: '4px', padding: '10px 14px', fontSize: '13px', color: T.text, fontFamily: FONT_SANS, outline: 'none', letterSpacing: '0.01em', transition: 'border-color 150ms', boxSizing: 'border-box' }}
+            onFocus={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
+            onBlur={e => (e.currentTarget.style.borderColor = T.border2)}
+          />
+          {customBg.trim() && (
+            <button onClick={() => setCustomBg('')}
+              style={{ marginTop: '2px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '4px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS, transition: 'border-color 150ms' }}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = T.border2)}>
+              Reset to default
+            </button>
+          )}
         </div>
 
         {/* Reset weekly */}

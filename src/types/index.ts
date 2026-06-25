@@ -13,4 +13,5 @@ export interface GoalStore {
   acknowledgedToday: boolean;
   lastAcknowledgedDate: string;
   onboardingComplete: boolean;
+  backgroundImage?: string;
 }
