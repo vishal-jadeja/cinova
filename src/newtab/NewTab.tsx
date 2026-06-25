@@ -22,10 +22,37 @@ const T = {
 const FONT_SANS = "'Space Grotesk', sans-serif";
 const FONT_MONO = "'Space Mono', monospace";
 const BG_URL = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80';
+const BG_URLS = [
+  BG_URL,
+  'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1920&q=80',
+  'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=1920&q=80',
+  'https://images.unsplash.com/photo-1509316785289-025f5b846b35?auto=format&fit=crop&w=1920&q=80',
+  'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1920&q=80',
+  'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1920&q=80',
+  'https://images.unsplash.com/photo-1439853949212-36089c9a8957?auto=format&fit=crop&w=1920&q=80',
+  'https://images.unsplash.com/photo-1418985991508-e47386d96a71?auto=format&fit=crop&w=1920&q=80',
+];
 const DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEK_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MAX_GOALS = 10;
+
+function getISOWeekKey(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${week}`;
+}
+
+function maybeRotateBackground(store: GoalStore): GoalStore {
+  if (!store.autoBackground) return store;
+  const weekKey = getISOWeekKey(new Date());
+  if (store.lastBackgroundChange === weekKey) return store;
+  const idx = ((store.backgroundIndex ?? -1) + 1) % BG_URLS.length;
+  return { ...store, backgroundImage: BG_URLS[idx], backgroundIndex: idx, lastBackgroundChange: weekKey };
+}
 
 function todayIndex(): number {
   const d = new Date().getDay();
@@ -384,6 +411,20 @@ function Dashboard({ store, onToggleGoal }: {
             <SidebarSection label="This Month" goals={store.monthly} onToggle={id => onToggleGoal('monthly', id)} />
             <SidebarSection label="This Year" goals={store.yearly} onToggle={id => onToggleGoal('yearly', id)} />
           </div>
+          {/* Sidebar footer — settings */}
+          <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 12px', display: 'flex', alignItems: 'center' }}>
+            <button onClick={() => { window.location.href = chrome.runtime.getURL('src/settings/index.html'); }}
+              title="Settings"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.55, transition: 'opacity 150ms', padding: '4px 6px', fontSize: '11px', letterSpacing: '0.06em', fontFamily: FONT_SANS }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '0.55')}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+              Settings
+            </button>
+          </div>
         </div>
 
         {/* Main */}
@@ -421,7 +462,13 @@ function Dashboard({ store, onToggleGoal }: {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function NewTab() {
   const [store, setLocalStore] = useState<GoalStore | null>(null);
-  useEffect(() => { getStore().then(setLocalStore); }, []);
+  useEffect(() => {
+    getStore().then(s => {
+      const updated = maybeRotateBackground(s);
+      setLocalStore(updated);
+      if (updated !== s) setStore(updated);
+    });
+  }, []);
 
   async function handleOnboardingComplete(patch: Partial<GoalStore>) {
     const newStore: GoalStore = { ...store!, ...patch };

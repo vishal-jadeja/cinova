@@ -230,7 +230,6 @@ export default function Options() {
   const [yearly, setYearly] = useState<GoalDraft[]>([emptyDraft()]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [savedVisible, setSavedVisible] = useState(false);
-  const [customBg, setCustomBg] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() =>
     (localStorage.getItem('cinova-options-view') as 'grid' | 'list') ?? 'grid'
   );
@@ -249,7 +248,6 @@ export default function Options() {
       const y = draftsFromGoals(s.yearly);
       setWeekly(w); setMonthly(mo); setYearly(y);
       setExpanded(new Set([...w, ...mo, ...y].filter(d => d.description.trim()).map(d => d.id)));
-      setCustomBg(s.backgroundImage ?? '');
     });
   }, []);
 
@@ -260,19 +258,11 @@ export default function Options() {
       weekly: buildGoals(weekly),
       monthly: buildGoals(monthly),
       yearly: buildGoals(yearly),
-      ...(customBg.trim() ? { backgroundImage: customBg.trim() } : { backgroundImage: undefined }),
     };
     await setStore(newStore);
     setLocalStore(newStore);
     setSavedVisible(true);
     setTimeout(() => setSavedVisible(false), 2500);
-  }
-
-  async function handleResetWeekly() {
-    if (!store) return;
-    const newStore: GoalStore = { ...store, weekly: store.weekly.map(g => ({ ...g, completed: false })) };
-    await setStore(newStore);
-    setLocalStore(newStore);
   }
 
   if (!store) {
@@ -293,7 +283,7 @@ export default function Options() {
     <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto' }}>
       {/* Background */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${customBg.trim() || BG_URL}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
+        <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${BG_URL}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
       </div>
 
@@ -356,40 +346,6 @@ export default function Options() {
           </span>
         </div>
 
-        {/* Background image */}
-        <div style={{ padding: '22px 24px', border: `1px solid ${T.border}`, borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Background image</div>
-          <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>Paste any image URL. The blur is applied automatically.</div>
-          <input
-            type="text"
-            value={customBg}
-            onChange={e => setCustomBg(e.target.value)}
-            placeholder={BG_URL}
-            style={{ marginTop: '4px', width: '100%', background: 'none', border: `1px solid ${T.border2}`, borderRadius: '4px', padding: '10px 14px', fontSize: '13px', color: T.text, fontFamily: FONT_SANS, outline: 'none', letterSpacing: '0.01em', transition: 'border-color 150ms', boxSizing: 'border-box' }}
-            onFocus={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
-            onBlur={e => (e.currentTarget.style.borderColor = T.border2)}
-          />
-          {customBg.trim() && (
-            <button onClick={() => setCustomBg('')}
-              style={{ marginTop: '2px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '4px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS, transition: 'border-color 150ms' }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = T.border2)}>
-              Reset to default
-            </button>
-          )}
-        </div>
-
-        {/* Reset weekly */}
-        <div style={{ padding: '22px 24px', border: `1px solid ${T.border}`, borderRadius: '6px', display: 'inline-flex', flexDirection: 'column', gap: '8px', minWidth: '320px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Reset weekly progress</div>
-          <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>Unchecks all weekly goals without deleting them.</div>
-          <button onClick={handleResetWeekly}
-            style={{ marginTop: '4px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '4px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS, transition: 'opacity 150ms, border-color 150ms' }}
-            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
-            onMouseLeave={e => (e.currentTarget.style.borderColor = T.border2)}>
-            Reset weekly progress
-          </button>
-        </div>
       </div>
     </div>
   );
