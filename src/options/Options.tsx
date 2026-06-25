@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Goal, GoalStore } from '../types';
 import { getStore, setStore } from '../utils/storage';
+import logoMark from '/CinovaLogo.png';
 
 function extractUrls(text: string): string[] {
   const m = text.match(/https?:\/\/[^\s]+/g);
@@ -291,9 +292,7 @@ export default function Options() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '52px' }}>
           <div>
-            <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.26em', fontWeight: 700, color: T.muted, marginBottom: '10px', fontFamily: FONT_MONO }}>
-              Cinova · Settings
-            </div>
+            <img src={logoMark} alt="Cinova" style={{ height: '24px', display: 'block', marginBottom: '14px', opacity: 0.9 }} />
             <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1 }}>Goals</h1>
           </div>
           <button onClick={() => { window.location.href = chrome.runtime.getURL('src/newtab/index.html'); }}

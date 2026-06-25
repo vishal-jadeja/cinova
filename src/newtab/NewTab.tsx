@@ -1,23 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Goal, GoalStore } from '../types';
 import { getStore, setStore } from '../utils/storage';
+import logoFull from '/CinovaWithTextLogo.png';
+
+interface Draft { id: string; text: string; description: string; }
+function emptyDraft(): Draft { return { id: crypto.randomUUID(), text: '', description: '' }; }
+function extractUrls(text: string): string[] {
+  const m = text.match(/https?:\/\/[^\s]+/g);
+  return m ? [...new Set(m)] : [];
+}
 
 const T = {
-  text:       '#e8e8e8',
-  muted:      'rgba(232,232,232,0.36)',
-  border:     'rgba(232,232,232,0.07)',
-  border2:    'rgba(232,232,232,0.14)',
-  surface:    'rgba(18,18,18,0.62)',
-  accent:     '#e8e8e8',
+  text: '#e8e8e8',
+  muted: 'rgba(232,232,232,0.36)',
+  border: 'rgba(232,232,232,0.07)',
+  border2: 'rgba(232,232,232,0.14)',
+  surface: 'rgba(18,18,18,0.62)',
+  accent: '#e8e8e8',
   accentText: '#0d0d0d',
 };
-const FONT_SANS   = "'Space Grotesk', sans-serif";
-const FONT_MONO   = "'Space Mono', monospace";
-const BG_URL      = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80';
-const DAY_NAMES   = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const WEEK_LONG   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-const MAX_GOALS   = 10;
+const FONT_SANS = "'Space Grotesk', sans-serif";
+const FONT_MONO = "'Space Mono', monospace";
+const BG_URL = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80';
+const DAY_NAMES = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEK_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MAX_GOALS = 10;
 
 function todayIndex(): number {
   const d = new Date().getDay();
@@ -36,13 +44,13 @@ function Background() {
 
 // ─── Week Tracker ─────────────────────────────────────────────────────────────
 function WeekTracker({ center = false }: { center?: boolean }) {
-  const today    = todayIndex();
+  const today = todayIndex();
   const daysLeft = 6 - today;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: center ? 'center' : 'flex-end', gap: '10px' }}>
       <div style={{ display: 'flex', gap: '6px' }}>
         {DAY_NAMES.map((day, i) => {
-          const isPast  = i < today;
+          const isPast = i < today;
           const isToday = i === today;
           const barColor = (isPast || isToday) ? '#E8A838' : T.border2;
           const lblColor = isPast ? T.text : isToday ? '#E8A838' : T.muted;
@@ -103,79 +111,169 @@ function Checkbox({ checked }: { checked: boolean }) {
   );
 }
 
+// ─── GoalCard (shared by Onboarding + reused pattern in Options) ──────────────
+function GoalCard({ draft, index, canRemove, onUpdate, onRemove, autoFocusNotes }: {
+  draft: Draft;
+  index: number;
+  canRemove: boolean;
+  onUpdate: (patch: Partial<Draft>) => void;
+  onRemove: () => void;
+  autoFocusNotes: boolean;
+}) {
+  const [expanded, setExpanded] = useState(autoFocusNotes);
+  const [focused, setFocused] = useState(false);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
+  const hasNotes = draft.description.trim().length > 0;
+  const urls = extractUrls(draft.description);
+
+  useEffect(() => {
+    if (expanded && autoFocusNotes && notesRef.current) notesRef.current.focus();
+  }, [expanded, autoFocusNotes]);
+
+  return (
+    <div style={{ border: `1px solid ${focused ? 'rgba(232,232,232,0.24)' : 'rgba(232,232,232,0.1)'}`, borderRadius: '6px', background: 'rgba(255,255,255,0.03)', overflow: 'hidden', transition: 'border-color 180ms' }}>
+      {/* Goal text row */}
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 14px', gap: '8px' }}>
+        <input
+          type="text"
+          value={draft.text}
+          placeholder={`Goal ${index + 1}`}
+          onChange={e => onUpdate({ text: e.target.value })}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, background: 'none', border: 'none', outline: 'none', padding: '13px 0', fontSize: '14px', color: T.text, letterSpacing: '0.01em', fontFamily: FONT_SANS }}
+        />
+        {/* Notes toggle */}
+        <button type="button" onClick={() => setExpanded(v => !v)} title={expanded ? 'Hide notes' : 'Add notes'}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', display: 'flex', alignItems: 'center', gap: '4px', color: hasNotes ? T.text : T.muted, opacity: hasNotes ? 0.8 : 0.5, transition: 'opacity 150ms', flexShrink: 0 }}>
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <path d="M2 2.5h9M2 5.5h9M2 8.5h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+          </svg>
+          {hasNotes && !expanded && <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: T.text, opacity: 0.6 }} />}
+        </button>
+        {canRemove && (
+          <button type="button" onClick={onRemove}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: T.muted, fontSize: '18px', lineHeight: 1, opacity: 0.45, flexShrink: 0, transition: 'opacity 150ms' }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '0.9')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0.45')}>×</button>
+        )}
+      </div>
+
+      {/* Notes panel */}
+      {expanded && (
+        <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 14px 12px' }}>
+          <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.16em', fontWeight: 600, color: T.muted, marginBottom: '8px', fontFamily: FONT_MONO }}>Notes</div>
+          <textarea
+            ref={notesRef}
+            value={draft.description}
+            onChange={e => onUpdate({ description: e.target.value })}
+            placeholder="Context, links, resources — URLs become clickable on your new tab"
+            rows={3}
+            style={{ display: 'block', width: '100%', background: 'none', border: 'none', outline: 'none', padding: 0, fontSize: '13px', color: 'rgba(232,232,232,0.75)', letterSpacing: '0.01em', fontFamily: FONT_SANS, resize: 'vertical', lineHeight: 1.65 }}
+          />
+          {urls.length > 0 && (
+            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: 'rgba(232,232,232,0.06) 1px solid' }}>
+              <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.14em', color: T.muted, fontFamily: FONT_MONO, marginBottom: '6px', opacity: 0.6 }}>Links</div>
+              {urls.map(url => (
+                <a key={url} href={url} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'block', fontSize: '12px', color: '#E8A838', marginBottom: '3px', wordBreak: 'break-all', textDecoration: 'none', opacity: 0.85, letterSpacing: '0.01em' }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.85')}>↗ {url}</a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Onboarding ───────────────────────────────────────────────────────────────
+type DraftSetter = React.Dispatch<React.SetStateAction<Draft[]>>;
+
 function Onboarding({ onComplete }: { onComplete: (patch: Partial<GoalStore>) => void }) {
-  const [weekly,  setWeekly]  = useState(['', '', '']);
-  const [monthly, setMonthly] = useState(['', '', '']);
-  const [yearly,  setYearly]  = useState(['', '', '']);
+  const [weekly, setWeekly] = useState<Draft[]>([emptyDraft()]);
+  const [monthly, setMonthly] = useState<Draft[]>([emptyDraft()]);
+  const [yearly, setYearly] = useState<Draft[]>([emptyDraft()]);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
 
-  function upd(setter: React.Dispatch<React.SetStateAction<string[]>>, vals: string[], i: number, v: string) {
-    const n = [...vals]; n[i] = v; setter(n);
+  function addDraft(setter: DraftSetter) {
+    if (setter === setWeekly && weekly.length >= MAX_GOALS) return;
+    if (setter === setMonthly && monthly.length >= MAX_GOALS) return;
+    if (setter === setYearly && yearly.length >= MAX_GOALS) return;
+    const d = emptyDraft();
+    setter(prev => [...prev, d]);
+    setNewIds(prev => new Set([...prev, d.id]));
   }
-  function addSlot(setter: React.Dispatch<React.SetStateAction<string[]>>, vals: string[]) {
-    if (vals.length < MAX_GOALS) setter([...vals, '']);
+  function removeDraft(setter: DraftSetter, id: string) {
+    setter(prev => { const n = prev.filter(d => d.id !== id); return n.length ? n : [emptyDraft()]; });
   }
-  function remSlot(setter: React.Dispatch<React.SetStateAction<string[]>>, vals: string[], i: number) {
-    const n = vals.filter((_, idx) => idx !== i);
-    setter(n.length ? n : ['']);
+  function updateDraft(setter: DraftSetter, id: string, patch: Partial<Draft>) {
+    setter(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d));
   }
-  function makeGoals(texts: string[]): Goal[] {
-    return texts.filter(t => t.trim()).map(t => ({ id: crypto.randomUUID(), text: t.trim(), completed: false }));
+  function buildGoals(drafts: Draft[]): Goal[] {
+    return drafts.filter(d => d.text.trim()).map(d => ({
+      id: d.id, text: d.text.trim(), completed: false,
+      ...(d.description.trim() ? { description: d.description.trim() } : {}),
+    }));
   }
 
-  const hasWeekly = weekly.some(t => t.trim());
+  const hasWeekly = weekly.some(d => d.text.trim());
 
-  const cols = [
-    { label: 'This Week',  note: 'Required', vals: weekly,  setter: setWeekly,  min: 1 },
-    { label: 'This Month', note: 'Optional', vals: monthly, setter: setMonthly, min: 0 },
-    { label: 'This Year',  note: 'Optional', vals: yearly,  setter: setYearly,  min: 0 },
+  const sections = [
+    { label: 'This Week', drafts: weekly, setter: setWeekly },
+    { label: 'This Month', drafts: monthly, setter: setMonthly },
+    { label: 'This Year', drafts: yearly, setter: setYearly },
   ];
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 60px', animation: 'fadeIn 0.22s ease', fontFamily: FONT_SANS, color: T.text, overflowY: 'auto' }}>
+    <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto' }}>
       <Background />
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '840px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <div style={{ fontSize: '11px', letterSpacing: '0.38em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px' }}>Cinova</div>
-          <div style={{ fontSize: '14px', color: T.muted }}>Set your goals once. Face them every day.</div>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: '600px', margin: '0 auto', padding: '52px 40px 80px' }}>
+
+        <div style={{ marginBottom: '52px' }}>
+          <img src={logoFull} alt="Cinova" style={{ height: '24px', display: 'block', marginBottom: '14px', opacity: 0.9 }} />
+          <h1 style={{ margin: '0 0 10px', fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1 }}>Your goals</h1>
+          <p style={{ margin: 0, fontSize: '13px', color: T.muted, lineHeight: 1.5 }}>Set your goals once. Face them every day.</p>
         </div>
 
-        <div style={{ display: 'flex', width: '100%', marginBottom: '40px' }}>
-          {cols.map(({ label, note, vals, setter, min }, colIdx) => (
-            <React.Fragment key={label}>
-              {colIdx > 0 && <div style={{ width: '1px', background: T.border, flexShrink: 0, margin: '0 40px' }} />}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, marginBottom: '4px' }}>{label}</div>
-                <div style={{ fontSize: '11px', color: T.muted, opacity: 0.5, marginBottom: '20px', letterSpacing: '0.04em' }}>{note}</div>
-                {vals.map((val, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', borderBottom: `1px solid ${T.border2}` }}>
-                    <input type="text" value={val} placeholder={`Goal ${i + 1}`}
-                      onChange={e => upd(setter, vals, i, e.target.value)}
-                      style={{ flex: 1, background: 'none', border: 'none', outline: 'none', padding: '10px 0', fontSize: '14px', color: T.text, letterSpacing: '0.01em', fontFamily: FONT_SANS }} />
-                    {vals.length > min && (
-                      <button type="button" onClick={() => remSlot(setter, vals, i)}
-                        style={{ background: 'none', border: 'none', color: T.muted, fontSize: '16px', lineHeight: 1, padding: '0 2px', cursor: 'pointer', opacity: 0.5 }}>×</button>
-                    )}
-                  </div>
-                ))}
-                {vals.length < MAX_GOALS && (
-                  <button type="button" onClick={() => addSlot(setter, vals)}
-                    style={{ background: 'none', border: 'none', color: T.muted, fontSize: '12px', letterSpacing: '0.06em', padding: '6px 0', cursor: 'pointer', fontFamily: FONT_SANS, opacity: 0.7 }}>
-                    + Add goal
-                  </button>
-                )}
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
+        {sections.map(({ label, drafts, setter }) => (
+          <div key={label} style={{ marginBottom: '40px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, fontFamily: FONT_MONO }}>{label}</span>
+              <span style={{ fontSize: '10px', color: T.muted, opacity: 0.4, fontFamily: FONT_MONO }}>{drafts.filter(d => d.text.trim()).length}/{MAX_GOALS}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {drafts.map((draft, i) => (
+                <GoalCard
+                  key={draft.id}
+                  draft={draft}
+                  index={i}
+                  canRemove={drafts.length > 1}
+                  onUpdate={patch => updateDraft(setter, draft.id, patch)}
+                  onRemove={() => removeDraft(setter, draft.id)}
+                  autoFocusNotes={newIds.has(draft.id)}
+                />
+              ))}
+            </div>
+            {drafts.length < MAX_GOALS && (
+              <button type="button" onClick={() => addDraft(setter)}
+                style={{ marginTop: '10px', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: '12px', letterSpacing: '0.06em', padding: '6px 0', fontFamily: FONT_SANS, opacity: 0.7, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span> Add goal
+              </button>
+            )}
+          </div>
+        ))}
 
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <button onClick={() => { if (hasWeekly) onComplete({ weekly: makeGoals(weekly), monthly: makeGoals(monthly), yearly: makeGoals(yearly), onboardingComplete: true }); }}
-            disabled={!hasWeekly}
-            style={{ padding: '15px 60px', background: hasWeekly ? T.accent : T.border2, color: hasWeekly ? T.accentText : T.muted, border: 'none', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', borderRadius: '2px', cursor: hasWeekly ? 'pointer' : 'default', fontFamily: FONT_SANS }}>
-            Set my goals
-          </button>
-        </div>
+        <div style={{ height: '1px', background: T.border, marginBottom: '28px' }} />
+
+        <button
+          onClick={() => { if (hasWeekly) onComplete({ weekly: buildGoals(weekly), monthly: buildGoals(monthly), yearly: buildGoals(yearly), onboardingComplete: true }); }}
+          disabled={!hasWeekly}
+          style={{ padding: '12px 28px', background: hasWeekly ? T.accent : T.border2, color: hasWeekly ? T.accentText : T.muted, border: 'none', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '4px', cursor: hasWeekly ? 'pointer' : 'default', fontFamily: FONT_SANS }}>
+          Set my goals
+        </button>
+
       </div>
     </div>
   );
@@ -218,10 +316,10 @@ function Dashboard({ store, onToggleGoal }: {
   store: GoalStore;
   onToggleGoal: (cat: 'weekly' | 'monthly' | 'yearly', id: string) => void;
 }) {
-  const now     = useTime();
-  const pad     = (n: number) => String(n).padStart(2, '0');
-  const hm      = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  const ss      = pad(now.getSeconds());
+  const now = useTime();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const hm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const ss = pad(now.getSeconds());
   const dateStr = `${WEEK_LONG[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
   const [search, setSearch] = useState('');
 
@@ -231,7 +329,7 @@ function Dashboard({ store, onToggleGoal }: {
 
       {/* Header strip */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', padding: '18px 56px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
-        <div style={{ fontSize: '11px', letterSpacing: '0.36em', textTransform: 'uppercase', fontWeight: 700 }}>Cinova</div>
+        <img src={logoFull} alt="Cinova" style={{ height: '26px', display: 'block', opacity: 0.92 }} />
       </div>
 
       {/* Content row */}
@@ -239,16 +337,24 @@ function Dashboard({ store, onToggleGoal }: {
 
         {/* Sidebar */}
         <div style={{ width: '256px', minWidth: '256px', display: 'flex', flexDirection: 'column', borderRight: `1px solid ${T.border}`, background: T.surface }}>
-          <div style={{ flex: 1, padding: '24px', overflowY: 'auto', minHeight: 0 }}>
-            <SidebarSection label="This Week"  goals={store.weekly}  onToggle={id => onToggleGoal('weekly', id)} />
-            <SidebarSection label="This Month" goals={store.monthly} onToggle={id => onToggleGoal('monthly', id)} />
-            <SidebarSection label="This Year"  goals={store.yearly}  onToggle={id => onToggleGoal('yearly', id)} />
-          </div>
-          <div style={{ padding: '14px 24px', borderTop: `1px solid ${T.border}`, flexShrink: 0 }}>
+          {/* Sidebar header with edit icon top-right */}
+          <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 700, color: T.muted }}>Goals</span>
             <button onClick={() => chrome.runtime.openOptionsPage()}
-              style={{ background: 'none', border: 'none', padding: 0, fontSize: '11px', letterSpacing: '0.08em', color: T.muted, fontWeight: 500, cursor: 'pointer', fontFamily: FONT_SANS }}>
-              Settings
+              title="Edit goals"
+              style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', opacity: 0.6, transition: 'opacity 150ms' }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M9.5 2L12 4.5L5.5 11H3V8.5L9.5 2Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8 3.5L10.5 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
             </button>
+          </div>
+          <div style={{ flex: 1, padding: '20px 20px', overflowY: 'auto', minHeight: 0 }}>
+            <SidebarSection label="This Week" goals={store.weekly} onToggle={id => onToggleGoal('weekly', id)} />
+            <SidebarSection label="This Month" goals={store.monthly} onToggle={id => onToggleGoal('monthly', id)} />
+            <SidebarSection label="This Year" goals={store.yearly} onToggle={id => onToggleGoal('yearly', id)} />
           </div>
         </div>
 
@@ -258,17 +364,23 @@ function Dashboard({ store, onToggleGoal }: {
           <div style={{ position: 'absolute', top: '24px', right: '40px' }}>
             <WeekTracker />
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', userSelect: 'none' }}>
-            <span style={{ fontFamily: FONT_MONO, fontSize: '92px', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1 }}>{hm}</span>
-            <span style={{ fontFamily: FONT_MONO, fontSize: '46px', fontWeight: 400, letterSpacing: '-0.02em', opacity: 0.32, paddingLeft: '4px' }}>:{ss}</span>
+          <div style={{ marginTop: '-40px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', userSelect: 'none' }}>
+              <span style={{ fontFamily: FONT_MONO, fontSize: '92px', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1 }}>{hm}</span>
+              <span style={{ fontFamily: FONT_MONO, fontSize: '46px', fontWeight: 400, letterSpacing: '-0.02em', opacity: 0.32, paddingLeft: '4px' }}>:{ss}</span>
+            </div>
+            <div style={{ fontSize: '12px', letterSpacing: '0.14em', color: T.muted, textTransform: 'uppercase', fontWeight: 500, marginTop: '10px', marginBottom: '22px' }}>{dateStr}</div>
+            <form onSubmit={e => { e.preventDefault(); const q = search.trim(); if (q) window.location.href = `https://www.google.com/search?q=${encodeURIComponent(q)}`; }}
+              style={{ width: '100%', maxWidth: '440px', position: 'relative' }}>
+              <svg data-dc-tpl="77" width="16" height="16" viewBox="0 0 16 16" fill="none" data-om-id="6c163b89:82" style={{ flexShrink: 0, position: 'absolute', top: '50%', left: '14px', transform: 'translateY(-50%)' }}>
+                <circle data-dc-tpl="78" cx="6.5" cy="6.5" r="4.5" stroke="#5A6080" strokeWidth="1.2" data-om-id="6c163b89:83"></circle>
+                <path data-dc-tpl="79" d="M10.5 10.5L13.5 13.5" stroke="#5A6080" strokeWidth="1.2" strokeLinecap="round" data-om-id="6c163b89:84"></path>
+              </svg>
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search Google"
+                style={{ width: '100%', padding: '13px 16px 13px 40px', background: T.surface, border: `1px solid ${T.border2}`, fontSize: '14px', color: T.text, borderRadius: '4px', letterSpacing: '0.01em', fontFamily: FONT_SANS, outline: 'none' }} />
+            </form>
           </div>
-          <div style={{ fontSize: '12px', letterSpacing: '0.14em', color: T.muted, textTransform: 'uppercase', fontWeight: 500, marginTop: '10px', marginBottom: '32px' }}>{dateStr}</div>
-          <form onSubmit={e => { e.preventDefault(); const q = search.trim(); if (q) window.location.href = `https://www.google.com/search?q=${encodeURIComponent(q)}`; }}
-            style={{ width: '100%', maxWidth: '440px' }}>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search Google"
-              style={{ width: '100%', padding: '13px 18px', background: T.surface, border: `1px solid ${T.border2}`, fontSize: '14px', color: T.text, borderRadius: '2px', letterSpacing: '0.01em', fontFamily: FONT_SANS, outline: 'none' }} />
-          </form>
         </div>
 
       </div>
