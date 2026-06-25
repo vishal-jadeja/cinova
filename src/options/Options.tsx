@@ -1,9 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp, Plus, RotateCcw, Save, X } from 'lucide-react';
 import { Goal, GoalStore } from '../types';
 import { getStore, setStore } from '../utils/storage';
 
-const MAX_GOALS = 10;
+const MAX_GOALS  = 10;
+const FONT_SANS  = "'Space Grotesk', sans-serif";
+const FONT_MONO  = "'Space Mono', monospace";
+const BG_URL     = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80';
+
+const T = {
+  text:       '#e8e8e8',
+  muted:      'rgba(232,232,232,0.36)',
+  border:     'rgba(232,232,232,0.07)',
+  border2:    'rgba(232,232,232,0.14)',
+  surface:    'rgba(18,18,18,0.62)',
+  accent:     '#e8e8e8',
+  accentText: '#0d0d0d',
+};
 
 interface GoalDraft {
   id: string;
@@ -19,78 +31,53 @@ function emptyDraft(): GoalDraft {
 }
 
 function draftsFromGoals(goals: Goal[]): GoalDraft[] {
-  const result = goals.map((g) => ({
-    id: g.id, text: g.text, completed: g.completed, description: g.description ?? '',
-  }));
-  return result.length > 0 ? result : [emptyDraft()];
+  const r = goals.map(g => ({ id: g.id, text: g.text, completed: g.completed, description: g.description ?? '' }));
+  return r.length > 0 ? r : [emptyDraft()];
 }
 
 function buildGoals(drafts: GoalDraft[]): Goal[] {
-  return drafts.filter((d) => d.text.trim()).map((d) => ({
-    id: d.id,
-    text: d.text.trim(),
-    completed: d.completed,
+  return drafts.filter(d => d.text.trim()).map(d => ({
+    id: d.id, text: d.text.trim(), completed: d.completed,
     ...(d.description.trim() ? { description: d.description.trim() } : {}),
   }));
 }
 
-const CATEGORIES = [
-  { key: 'weekly' as const, label: 'WEEKLY GOALS', note: 'resets every Monday' },
-  { key: 'monthly' as const, label: 'MONTHLY GOALS', note: '' },
-  { key: 'yearly' as const, label: 'YEARLY GOALS', note: '' },
-];
-
-const inputBase: React.CSSProperties = {
-  background: '#13161F', border: '1px solid #1E2130', color: '#E8EAF0',
-  fontSize: '14px', padding: '11px 14px', borderRadius: '4px', outline: 'none',
-  fontFamily: 'Inter, sans-serif', transition: 'border-color 150ms', width: '100%',
-};
-
 export default function Options() {
-  const [store, setLocalStore] = useState<GoalStore | null>(null);
-  const [weekly, setWeekly] = useState<GoalDraft[]>([emptyDraft()]);
-  const [monthly, setMonthly] = useState<GoalDraft[]>([emptyDraft()]);
-  const [yearly, setYearly] = useState<GoalDraft[]>([emptyDraft()]);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [toast, setToast] = useState('');
+  const [store,   setLocalStore] = useState<GoalStore | null>(null);
+  const [weekly,  setWeekly]     = useState<GoalDraft[]>([emptyDraft()]);
+  const [monthly, setMonthly]    = useState<GoalDraft[]>([emptyDraft()]);
+  const [yearly,  setYearly]     = useState<GoalDraft[]>([emptyDraft()]);
+  const [expanded, setExpanded]  = useState<Set<string>>(new Set());
+  const [savedVisible, setSavedVisible] = useState(false);
 
   useEffect(() => {
-    getStore().then((s) => {
+    getStore().then(s => {
       setLocalStore(s);
       const w = draftsFromGoals(s.weekly);
       const mo = draftsFromGoals(s.monthly);
-      const y = draftsFromGoals(s.yearly);
-      setWeekly(w);
-      setMonthly(mo);
-      setYearly(y);
-      // Auto-expand goals that already have description content
-      const withContent = new Set([...w, ...mo, ...y].filter((d) => d.description.trim()).map((d) => d.id));
-      setExpanded(withContent);
+      const y  = draftsFromGoals(s.yearly);
+      setWeekly(w); setMonthly(mo); setYearly(y);
+      setExpanded(new Set([...w, ...mo, ...y].filter(d => d.description.trim()).map(d => d.id)));
     });
   }, []);
 
   function toggleExpanded(id: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+    setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
 
   function updateDraft(setter: Setter, id: string, patch: Partial<Omit<GoalDraft, 'id'>>) {
-    setter((prev) => prev.map((d) => (d.id === id ? { ...d, ...patch } : d)));
+    setter(prev => prev.map(d => d.id === id ? { ...d, ...patch } : d));
   }
 
   function addDraft(setter: Setter) {
-    const draft = emptyDraft();
-    setter((prev) => [...prev, draft]);
-    // Auto-open description panel on new goal
-    setExpanded((prev) => new Set([...prev, draft.id]));
+    const d = emptyDraft();
+    setter(prev => [...prev, d]);
+    setExpanded(prev => new Set([...prev, d.id]));
   }
 
   function removeDraft(setter: Setter, id: string) {
-    setter((prev) => { const next = prev.filter((d) => d.id !== id); return next.length === 0 ? [emptyDraft()] : next; });
-    setExpanded((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    setter(prev => { const n = prev.filter(d => d.id !== id); return n.length === 0 ? [emptyDraft()] : n; });
+    setExpanded(prev => { const n = new Set(prev); n.delete(id); return n; });
   }
 
   async function handleSave() {
@@ -103,189 +90,134 @@ export default function Options() {
     };
     await setStore(newStore);
     setLocalStore(newStore);
-    setToast('saved');
-    setTimeout(() => setToast(''), 2500);
+    setSavedVisible(true);
+    // close options tab → returns to new tab
+    setTimeout(() => window.close(), 700);
   }
 
   async function handleResetWeekly() {
     if (!store) return;
-    const newStore: GoalStore = { ...store, weekly: store.weekly.map((g) => ({ ...g, completed: false })) };
+    const newStore: GoalStore = { ...store, weekly: store.weekly.map(g => ({ ...g, completed: false })) };
     await setStore(newStore);
     setLocalStore(newStore);
-    setToast('reset');
-    setTimeout(() => setToast(''), 2500);
   }
 
   if (!store) {
     return (
-      <div style={{ minHeight: '100vh', background: '#0C0E14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: '16px', height: '16px', border: '1.5px solid #E8A838', borderTopColor: 'transparent', borderRadius: '50%' }} />
+      <div style={{ position: 'fixed', inset: 0, background: '#0d0d0d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '16px', height: '16px', border: '1.5px solid #e8e8e8', borderTopColor: 'transparent', borderRadius: '50%' }} />
       </div>
     );
   }
 
-  const stateMap = {
-    weekly: { values: weekly, setter: setWeekly },
-    monthly: { values: monthly, setter: setMonthly },
-    yearly: { values: yearly, setter: setYearly },
-  };
+  const cols = [
+    { key: 'weekly'  as const, label: 'This Week',  values: weekly,  setter: setWeekly  },
+    { key: 'monthly' as const, label: 'This Month', values: monthly, setter: setMonthly },
+    { key: 'yearly'  as const, label: 'This Year',  values: yearly,  setter: setYearly  },
+  ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0C0E14', color: '#E8EAF0', position: 'relative', overflow: 'hidden' }}>
-      {/* Atmospheric gradient background */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-        background: `
-          radial-gradient(ellipse 130% 55% at 50% -5%, rgba(72,32,160,0.10) 0%, transparent 60%),
-          radial-gradient(ellipse 70% 55% at 88% 92%, rgba(16,76,156,0.08) 0%, transparent 55%)
-        `,
-      }} />
+    <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto' }}>
+      {/* Background */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: '-40px', backgroundImage: `url('${BG_URL}')`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(34px)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
+      </div>
 
-      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '48px 40px', position: 'relative', zIndex: 1 }}>
-        <div style={{ marginBottom: '28px' }}>
-          <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '22px', fontWeight: 700, color: '#E8EAF0', letterSpacing: '-0.01em', margin: '0 0 5px' }}>Cinova</h1>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#5A6080', margin: 0 }}>Your goals. Every tab.</p>
+      <div style={{ position: 'relative', zIndex: 1, padding: '48px 64px' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '52px' }}>
+          <div>
+            <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.26em', fontWeight: 700, color: T.muted, marginBottom: '10px', fontFamily: FONT_MONO }}>
+              Cinova · Settings
+            </div>
+            <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1 }}>Goals</h1>
+          </div>
+          <button onClick={() => window.close()}
+            style={{ background: 'none', border: `1px solid ${T.border2}`, padding: '8px 16px', fontSize: '11px', color: T.muted, letterSpacing: '0.06em', borderRadius: '2px', fontWeight: 500, cursor: 'pointer' }}>
+            ← Back
+          </button>
         </div>
 
-        <div style={{ height: '1px', background: '#1E2130', marginBottom: '28px' }} />
-
-        {CATEGORIES.map(({ key, label, note }) => {
-          const { values, setter } = stateMap[key];
-          const atMax = values.length >= MAX_GOALS;
-
-          return (
-            <div key={key} style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '12px' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#5A6080', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+        {/* 3-column inputs */}
+        <div style={{ display: 'flex', marginBottom: '48px' }}>
+          {cols.map(({ key, label, values, setter }, colIdx) => (
+            <React.Fragment key={key}>
+              {colIdx > 0 && <div style={{ width: '1px', background: T.border, flexShrink: 0 }} />}
+              <div style={{ flex: 1, padding: colIdx === 0 ? '0 52px 0 0' : colIdx === 2 ? '0 0 0 52px' : '0 52px' }}>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, marginBottom: '20px' }}>
                   {label}
-                </span>
-                {note && (
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#5A6080', letterSpacing: '0.06em' }}>({note})</span>
-                )}
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#5A6080', marginLeft: 'auto', opacity: 0.4 }}>
-                  {values.filter((d) => d.text.trim()).length}/{MAX_GOALS}
-                </span>
-              </div>
+                </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {values.map((draft, i) => {
-                  const isExpanded = expanded.has(draft.id);
-                  const hasContent = draft.description.trim().length > 0;
-
+                  const isExp    = expanded.has(draft.id);
+                  const hasNotes = draft.description.trim().length > 0;
                   return (
-                    <div key={draft.id} style={{ border: '1px solid #1E2130', borderRadius: '4px', overflow: 'hidden' }}>
-                      {/* Goal text row */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#13161F', padding: '0 12px' }}>
-                        <input
-                          type="text"
-                          value={draft.text}
-                          onChange={(e) => updateDraft(setter, draft.id, { text: e.target.value })}
-                          placeholder={`Goal ${i + 1}`}
-                          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#E8EAF0', fontSize: '14px', padding: '11px 0', fontFamily: 'Inter, sans-serif' }}
-                        />
-                        {/* Description toggle — accent when has content */}
-                        <button
-                          type="button"
-                          onClick={() => toggleExpanded(draft.id)}
-                          style={{
-                            flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px',
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            color: hasContent ? '#E8A838' : '#5A6080',
-                            fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', letterSpacing: '0.06em',
-                            padding: '4px 6px', transition: 'color 150ms',
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.color = '#E8A838')}
-                          onMouseLeave={(e) => (e.currentTarget.style.color = hasContent ? '#E8A838' : '#5A6080')}
-                        >
-                          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                          {isExpanded ? 'Notes' : hasContent ? 'Notes' : 'Notes'}
+                    <div key={draft.id} style={{ marginBottom: '10px' }}>
+                      {/* goal row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', borderBottom: `1px solid ${T.border2}` }}>
+                        <input type="text" value={draft.text} placeholder={`Goal ${i + 1}`}
+                          onChange={e => updateDraft(setter, draft.id, { text: e.target.value })}
+                          style={{ flex: 1, background: 'none', border: 'none', padding: '11px 0', fontSize: '14px', color: T.text, letterSpacing: '0.01em', fontFamily: FONT_SANS }} />
+                        {/* notes toggle */}
+                        <button type="button" onClick={() => toggleExpanded(draft.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: hasNotes ? T.text : T.muted, fontSize: '10px', fontFamily: FONT_MONO, flexShrink: 0, lineHeight: 1 }}>
+                          {isExp ? '▲' : '▼'}
                         </button>
                         {values.length > 1 && (
                           <button type="button" onClick={() => removeDraft(setter, draft.id)}
-                            style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: '4px', display: 'flex', transition: 'color 150ms' }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = '#E05A5A')}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = '#5A6080')}>
-                            <X size={13} />
-                          </button>
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: T.muted, fontSize: '16px', flexShrink: 0, lineHeight: 1 }}>×</button>
                         )}
                       </div>
-
-                      {/* Description panel — links typed inline, URLs linkified on display */}
-                      {isExpanded && (
-                        <div style={{ padding: '14px 16px', borderTop: '1px solid #1E2130', background: 'rgba(255,255,255,0.015)' }}>
-                          <textarea
-                            value={draft.description}
-                            onChange={(e) => updateDraft(setter, draft.id, { description: e.target.value })}
+                      {/* notes panel */}
+                      {isExp && (
+                        <div style={{ paddingTop: '8px' }}>
+                          <textarea value={draft.description}
+                            onChange={e => updateDraft(setter, draft.id, { description: e.target.value })}
                             placeholder="Notes, context, or paste links — URLs become clickable on your new tab"
-                            rows={3}
-                            style={{ ...inputBase, resize: 'vertical', borderRadius: '4px', fontSize: '13px', lineHeight: 1.6, padding: '10px 12px' }}
-                            onFocus={(e) => (e.currentTarget.style.borderColor = '#E8A838')}
-                            onBlur={(e) => (e.currentTarget.style.borderColor = '#1E2130')}
-                            autoFocus
-                          />
+                            rows={3} autoFocus
+                            style={{ display: 'block', width: '100%', background: 'none', border: 'none', borderBottom: `1px solid ${T.border2}`, padding: '8px 0', fontSize: '13px', color: T.muted, letterSpacing: '0.01em', fontFamily: FONT_SANS, resize: 'vertical', lineHeight: 1.6 }} />
                         </div>
                       )}
                     </div>
                   );
                 })}
+
+                {values.length < MAX_GOALS && (
+                  <button type="button" onClick={() => addDraft(setter)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted, fontSize: '12px', letterSpacing: '0.06em', padding: '6px 0', fontFamily: FONT_SANS }}>
+                    + Add goal
+                  </button>
+                )}
               </div>
-
-              {!atMax ? (
-                <button type="button" onClick={() => addDraft(setter)}
-                  style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: 0, fontFamily: 'Inter, sans-serif', fontSize: '12px', transition: 'color 150ms' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#E8A838')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#5A6080')}>
-                  <Plus size={13} /> Add goal
-                </button>
-              ) : (
-                <p style={{ marginTop: '10px', fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#5A6080', opacity: 0.5, margin: '10px 0 0' }}>
-                  Maximum {MAX_GOALS} goals reached
-                </p>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Save */}
-        <div style={{ marginBottom: '32px' }}>
-          <button onClick={handleSave}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#E8A838', color: '#0C0E14', border: 'none', padding: '11px 22px', fontSize: '14px', fontWeight: 700, borderRadius: '6px', cursor: 'pointer', transition: 'background 150ms', letterSpacing: '0.01em', fontFamily: 'Inter, sans-serif' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#F2B540')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#E8A838')}>
-            <Save size={14} />
-            Save Goals
-          </button>
+            </React.Fragment>
+          ))}
         </div>
 
-        <div style={{ height: '1px', background: '#1E2130', marginBottom: '28px' }} />
+        <div style={{ height: '1px', background: T.border, marginBottom: '28px' }} />
 
-        {/* Danger zone */}
-        <div>
-          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#E05A5A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px', marginTop: 0 }}>
-            ⚠ Reset Weekly Goal Progress
-          </p>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#5A6080', lineHeight: 1.65, marginBottom: '16px', marginTop: 0 }}>
-            Clears all weekly completion checkmarks. Your goal text is preserved. This action cannot be undone.
-          </p>
+        {/* Save */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '52px' }}>
+          <button onClick={handleSave}
+            style={{ padding: '12px 28px', background: T.accent, color: T.accentText, border: 'none', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '2px', cursor: 'pointer', fontFamily: FONT_SANS }}>
+            Save changes
+          </button>
+          <span style={{ fontSize: '12px', color: T.muted, opacity: savedVisible ? 1 : 0, transition: 'opacity 0.4s', letterSpacing: '0.06em' }}>
+            ✓ Saved
+          </span>
+        </div>
+
+        {/* Reset weekly */}
+        <div style={{ padding: '22px 24px', border: `1px solid ${T.border}`, borderRadius: '2px', display: 'inline-flex', flexDirection: 'column', gap: '8px', minWidth: '340px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Reset weekly progress</div>
+          <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>Unchecks all weekly goals without deleting them.</div>
           <button onClick={handleResetWeekly}
-            style={{ background: 'transparent', color: '#E05A5A', border: '1px solid rgba(224,90,90,0.35)', padding: '9px 18px', fontSize: '13px', fontWeight: 600, borderRadius: '6px', cursor: 'pointer', transition: 'all 150ms', letterSpacing: '0.01em', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '8px' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(224,90,90,0.08)'; e.currentTarget.style.borderColor = '#E05A5A'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(224,90,90,0.35)'; }}>
-            <RotateCcw size={13} />
+            style={{ marginTop: '4px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '2px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS }}>
             Reset weekly progress
           </button>
         </div>
       </div>
-
-      {/* Toast */}
-      {toast && (
-        <div style={{ position: 'fixed', bottom: '20px', right: '20px', background: '#13161F', border: '1px solid #1E2130', padding: '10px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none', zIndex: 50 }}>
-          <span style={{ color: '#4CAF82', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', lineHeight: 1 }}>✓</span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#E8EAF0', letterSpacing: '0.06em' }}>
-            {toast === 'saved' ? 'Goals saved' : 'Progress reset'}
-          </span>
-        </div>
-      )}
     </div>
   );
 }

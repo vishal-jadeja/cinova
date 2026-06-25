@@ -1,73 +1,100 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { ExternalLink, Pencil, Plus, Search, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { Goal, GoalStore } from '../types';
-import { DEFAULT_STORE, getStore, setStore } from '../utils/storage';
+import { getStore, setStore } from '../utils/storage';
 
-const MAX_GOALS = 10;
+// ─── Theme ────────────────────────────────────────────────────────────────────
+const T = {
+  text:       '#e8e8e8',
+  muted:      'rgba(232,232,232,0.36)',
+  border:     'rgba(232,232,232,0.07)',
+  border2:    'rgba(232,232,232,0.14)',
+  surface:    'rgba(18,18,18,0.62)',
+  accent:     '#e8e8e8',
+  accentText: '#0d0d0d',
+};
+const FONT_SANS   = "'Space Grotesk', sans-serif";
+const FONT_MONO   = "'Space Mono', monospace";
+const BG_URL      = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80';
+const DAY_NAMES   = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+const MONTH_NAMES = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+];
+const WEEK_LONG   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MAX_GOALS   = 10;
 
-const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-
+// Monday=0 … Sunday=6
 function todayIndex(): number {
   const d = new Date().getDay();
   return d === 0 ? 6 : d - 1;
 }
 
-function daysLeftThisWeek(): number {
-  return 6 - todayIndex();
-}
-
-// ─── Shared ───────────────────────────────────────────────────────────────────
-
-// Deep atmospheric gradient — no external image dependency
-function BgGradient({ subtle = false }: { subtle?: boolean }) {
-  const intensity = subtle ? 0.55 : 1;
+// ─── Background ───────────────────────────────────────────────────────────────
+function Background() {
   return (
-    <div style={{
-      position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0,
-      background: `
-        radial-gradient(ellipse 130% 55% at 50% -5%, rgba(72,32,160,${0.18 * intensity}) 0%, transparent 60%),
-        radial-gradient(ellipse 70% 55% at 88% 92%, rgba(16,76,156,${0.14 * intensity}) 0%, transparent 55%),
-        radial-gradient(ellipse 50% 40% at 10% 60%, rgba(40,20,100,${0.08 * intensity}) 0%, transparent 50%)
-      `,
-    }} />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      <div style={{
+        position: 'absolute', inset: '-40px',
+        backgroundImage: `url('${BG_URL}')`,
+        backgroundSize: 'cover', backgroundPosition: 'center',
+        filter: 'blur(34px)',
+      }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
+    </div>
   );
 }
 
-function SectionLabel({ children, mb = 12 }: { children: React.ReactNode; mb?: number }) {
+// ─── Week Tracker (amber bar style — matches reference image) ─────────────────
+function WeekTracker() {
+  const today    = todayIndex();
+  const daysLeft = 6 - today;
+
   return (
-    <p style={{
-      fontFamily: "'JetBrains Mono', monospace",
-      fontSize: '10px', color: '#5A6080',
-      letterSpacing: '0.15em', textTransform: 'uppercase',
-      margin: 0, marginBottom: `${mb}px`,
-    }}>
-      {children}
-    </p>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '10px' }}>
+      <div style={{ display: 'flex', gap: '6px' }}>
+        {DAY_NAMES.map((day, i) => {
+          const isPast  = i < today;
+          const isToday = i === today;
+          const barColor = (isPast || isToday) ? '#E8A838' : T.border2;
+          const lblColor = isPast ? T.text : isToday ? '#E8A838' : T.muted;
+          return (
+            <div key={day} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', width: '30px' }}>
+              <div style={{ width: '100%', height: '4px', borderRadius: '2px', display: 'flex', overflow: 'hidden' }}>
+                <div style={{ flex: 1, background: barColor }} />
+                <div style={{ flex: 1, background: barColor, animation: isToday ? 'pulseAmber 2s ease-in-out infinite' : 'none' }} />
+              </div>
+              <span style={{
+                fontFamily: FONT_MONO, fontSize: '8px', color: lblColor,
+                letterSpacing: '0.06em', lineHeight: 1,
+                fontWeight: isToday ? 700 : 400,
+              }}>
+                {day}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <span style={{ fontFamily: FONT_MONO, fontSize: '9px', color: T.muted, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+        {daysLeft === 0
+          ? 'Last day of the week'
+          : `${daysLeft} day${daysLeft !== 1 ? 's' : ''} left this week`}
+      </span>
+    </div>
   );
 }
 
-// Parse URLs in description text into clickable links
+// ─── Linkify URLs in descriptions ────────────────────────────────────────────
 function linkify(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  const urlRegex = /https?:\/\/[^\s]+/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = urlRegex.exec(text)) !== null) {
+  const re = /https?:\/\/[^\s]+/g;
+  let last = 0; let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
     const url = m[0];
     parts.push(
-      <a
-        key={m.index}
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
+      <a key={m.index} href={url} target="_blank" rel="noopener noreferrer"
         style={{ color: '#E8A838', textDecoration: 'none' }}
-        onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
-        onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {url}
-      </a>
+        onClick={e => e.stopPropagation()}>{url}</a>,
     );
     last = m.index + url.length;
   }
@@ -75,451 +102,256 @@ function linkify(text: string): React.ReactNode[] {
   return parts;
 }
 
-// Circular badge — matches design
-function GoalIcon({ completed, size }: { completed: boolean; size: number }) {
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: completed ? '#4CAF82' : 'transparent',
-      border: completed ? '1.5px solid #4CAF82' : '1.5px solid #5A6080',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size <= 12 ? '8px' : '9px',
-      color: '#0C0E14', fontWeight: 700, lineHeight: 1,
-      transition: 'background 200ms, border-color 200ms',
-    }}>
-      {completed ? '✓' : ''}
-    </div>
-  );
-}
+// ─── Onboarding ───────────────────────────────────────────────────────────────
+function Onboarding({ onComplete }: { onComplete: (patch: Partial<GoalStore>) => void }) {
+  const [weekly,  setWeekly]  = useState(['', '', '']);
+  const [monthly, setMonthly] = useState(['', '', '']);
+  const [yearly,  setYearly]  = useState(['', '', '']);
 
-// ─── WeekErosionBar ───────────────────────────────────────────────────────────
-
-function WeekErosionBar() {
-  const current = todayIndex();
-  const left = daysLeftThisWeek();
-
-  return (
-    <div style={{ width: '100%', marginBottom: '40px' }}>
-      <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
-        {DAYS.map((day, i) => {
-          const isPast = i < current;
-          const isToday = i === current;
-          const fill = isPast || isToday ? '#E8A838' : '#1E2130';
-          const labelColor = isPast ? '#E8EAF0' : isToday ? '#E8A838' : '#5A6080';
-          return (
-            <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: '100%', height: '4px', display: 'flex', overflow: 'hidden', borderRadius: '2px' }}>
-                <div style={{ flex: 1, background: fill }} />
-                <div style={{ flex: 1, background: fill, animation: isToday ? 'pulseAmber 2s ease-in-out infinite' : 'none' }} />
-              </div>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: labelColor, letterSpacing: '0.1em', lineHeight: 1 }}>
-                {day}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#5A6080', letterSpacing: '0.12em', textAlign: 'center', textTransform: 'uppercase', margin: 0 }}>
-        {left === 0 ? 'last day of the week' : `${left} day${left !== 1 ? 's' : ''} left this week`}
-      </p>
-    </div>
-  );
-}
-
-// ─── GoalItem ─────────────────────────────────────────────────────────────────
-
-interface GoalItemProps {
-  goal: Goal;
-  onToggle?: () => void;
-  compact?: boolean;
-}
-
-// Description always visible when present — no toggle
-function GoalItem({ goal, onToggle, compact }: GoalItemProps) {
-  const hasDesc = !!goal.description;
-  const iconSize = compact ? 12 : 15;
-
-  return (
-    <div
-      onClick={onToggle}
-      style={{
-        display: 'flex', flexDirection: 'column',
-        padding: compact ? '6px 0' : '10px 0',
-        borderBottom: '1px solid #1E2130',
-        cursor: onToggle ? 'pointer' : 'default',
-        userSelect: 'none',
-        transition: 'opacity 150ms',
-      }}
-      onMouseEnter={(e) => { if (onToggle) e.currentTarget.style.opacity = '0.7'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: compact ? '8px' : '10px' }}>
-        <GoalIcon completed={goal.completed} size={iconSize} />
-        <span style={{
-          fontFamily: 'Inter, sans-serif',
-          fontSize: compact ? '12px' : '14px',
-          color: goal.completed ? '#5A6080' : '#E8EAF0',
-          textDecoration: goal.completed ? 'line-through' : 'none',
-          transition: 'color 200ms, text-decoration 200ms',
-          lineHeight: compact ? 1.3 : 1.4,
-          flex: 1, minWidth: 0,
-          ...(compact && !hasDesc ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : {}),
-        }}>
-          {goal.text}
-        </span>
-      </div>
-
-      {/* Description always shown when present — URLs linkified */}
-      {hasDesc && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{ marginLeft: compact ? '20px' : '25px', marginTop: '6px' }}
-        >
-          <p style={{
-            fontFamily: 'Inter, sans-serif',
-            fontSize: compact ? '11px' : '13px',
-            color: '#5A6080',
-            lineHeight: 1.55,
-            margin: 0,
-            wordBreak: 'break-word',
-          }}>
-            {linkify(goal.description!)}
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Onboarding ──────────────────────────────────────────────────────────────
-
-interface OnboardingProps {
-  onComplete: (store: GoalStore) => void;
-}
-
-function Onboarding({ onComplete }: OnboardingProps) {
-  const [weekly, setWeekly] = useState<string[]>(['']);
-  const [monthly, setMonthly] = useState<string[]>(['']);
-  const [yearly, setYearly] = useState<string[]>(['']);
-  const [error, setError] = useState('');
-
-  function buildGoals(texts: string[]): Goal[] {
-    return texts.filter((t) => t.trim()).map((text) => ({ id: crypto.randomUUID(), text: text.trim(), completed: false }));
+  function upd(setter: React.Dispatch<React.SetStateAction<string[]>>, vals: string[], i: number, v: string) {
+    const n = [...vals]; n[i] = v; setter(n);
+  }
+  function addSlot(setter: React.Dispatch<React.SetStateAction<string[]>>, vals: string[]) {
+    if (vals.length < MAX_GOALS) setter([...vals, '']);
+  }
+  function remSlot(setter: React.Dispatch<React.SetStateAction<string[]>>, vals: string[], i: number) {
+    setter(vals.filter((_, idx) => idx !== i));
+  }
+  function makeGoals(texts: string[]): Goal[] {
+    return texts.filter(t => t.trim()).map(t => ({ id: crypto.randomUUID(), text: t.trim(), completed: false }));
   }
 
-  function updateAt(setter: React.Dispatch<React.SetStateAction<string[]>>, index: number, value: string) {
-    setter((prev) => prev.map((v, i) => (i === index ? value : v)));
-  }
+  const hasWeekly = weekly.some(t => t.trim());
 
-  function addGoal(setter: React.Dispatch<React.SetStateAction<string[]>>) {
-    setter((prev) => [...prev, '']);
-  }
-
-  function removeGoal(setter: React.Dispatch<React.SetStateAction<string[]>>, index: number) {
-    setter((prev) => { const next = prev.filter((_, i) => i !== index); return next.length === 0 ? [''] : next; });
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!weekly.some((t) => t.trim())) { setError('Add at least one weekly goal to get started.'); return; }
-    const newStore: GoalStore = {
-      ...DEFAULT_STORE,
-      weekly: buildGoals(weekly),
-      monthly: buildGoals(monthly),
-      yearly: buildGoals(yearly),
-      onboardingComplete: true,
-      acknowledgedToday: false,
-      lastWeeklyReset: new Date().toISOString(),
-    };
-    await setStore(newStore);
-    onComplete(newStore);
-  }
-
-  const inputBase: React.CSSProperties = {
-    flex: 1, background: '#13161F', border: '1px solid #1E2130', color: '#E8EAF0',
-    fontSize: '14px', padding: '11px 14px', borderRadius: '4px', outline: 'none',
-    fontFamily: 'Inter, sans-serif', transition: 'border-color 150ms',
+  const inputStyle: React.CSSProperties = {
+    flex: 1, background: 'none', border: 'none',
+    borderBottom: `1px solid ${T.border2}`, padding: '11px 0',
+    fontSize: '14px', color: T.text, letterSpacing: '0.01em', fontFamily: FONT_SANS,
   };
 
-  const sections = [
-    { label: 'Weekly Goals', required: true, values: weekly, setter: setWeekly, ph: (i: number) => i === 0 ? 'e.g. Ship the v1 prototype' : `Weekly goal ${i + 1}` },
-    { label: 'Monthly Goals', required: false, values: monthly, setter: setMonthly, ph: (i: number) => i === 0 ? 'e.g. Complete the design system' : `Monthly goal ${i + 1}` },
-    { label: 'Yearly Goals', required: false, values: yearly, setter: setYearly, ph: (i: number) => i === 0 ? 'e.g. Build and launch Cinova' : `Yearly goal ${i + 1}` },
+  const cols = [
+    { label: 'This Week',  note: 'Required', vals: weekly,  setter: setWeekly,  min: 1 },
+    { label: 'This Month', note: 'Optional', vals: monthly, setter: setMonthly, min: 0 },
+    { label: 'This Year',  note: 'Optional', vals: yearly,  setter: setYearly,  min: 0 },
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0C0E14', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', position: 'relative', overflow: 'hidden' }}>
-      <BgGradient subtle />
-      <div style={{ width: '100%', maxWidth: '520px', padding: '48px 0', position: 'relative', zIndex: 1 }}>
-        <div style={{ marginBottom: '48px' }}>
-          <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '32px', fontWeight: 700, color: '#E8EAF0', letterSpacing: '-0.025em', margin: '0 0 10px' }}>Cinova</h1>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: '#5A6080', lineHeight: 1.55, margin: 0 }}>Set your goals once. Face them every tab.</p>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 60px', animation: 'fadeIn 0.22s ease', fontFamily: FONT_SANS, color: T.text }}>
+      <Background />
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '960px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '52px' }}>
+          <div style={{ fontSize: '11px', letterSpacing: '0.38em', textTransform: 'uppercase', fontWeight: 700, marginBottom: '12px' }}>Cinova</div>
+          <div style={{ fontSize: '14px', color: T.muted }}>Set your goals once. Face them every day.</div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {sections.map(({ label, required, values, setter, ph }) => {
-            const atMax = values.length >= MAX_GOALS;
-            return (
-              <div key={label} style={{ marginBottom: '28px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                  <SectionLabel mb={0}>{label}</SectionLabel>
-                  {required && (
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#E8A838', letterSpacing: '0.1em', textTransform: 'uppercase', border: '1px solid rgba(232,168,56,0.3)', padding: '2px 6px', borderRadius: '3px' }}>
-                      required
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {values.map((val, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <input type="text" value={val} onChange={(e) => updateAt(setter, i, e.target.value)} placeholder={ph(i)} style={inputBase}
-                        onFocus={(e) => (e.currentTarget.style.borderColor = '#E8A838')}
-                        onBlur={(e) => (e.currentTarget.style.borderColor = '#1E2130')} />
-                      {values.length > 1 && (
-                        <button type="button" onClick={() => removeGoal(setter, i)} style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: '4px', display: 'flex' }}>
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {!atMax && (
-                  <button type="button" onClick={() => addGoal(setter)}
-                    style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: 0, fontFamily: 'Inter, sans-serif', fontSize: '12px', transition: 'color 150ms' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = '#E8A838')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = '#5A6080')}>
-                    <Plus size={13} /> Add goal
+        <div style={{ display: 'flex', width: '100%', marginBottom: '48px' }}>
+          {cols.map(({ label, note, vals, setter, min }, colIdx) => (
+            <React.Fragment key={label}>
+              {colIdx > 0 && <div style={{ width: '1px', background: T.border, flexShrink: 0 }} />}
+              <div style={{ flex: 1, padding: colIdx === 0 ? '0 52px 0 0' : colIdx === 2 ? '0 0 0 52px' : '0 52px' }}>
+                <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, marginBottom: '6px' }}>{label}</div>
+                <div style={{ fontSize: '11px', color: T.muted, opacity: 0.55, marginBottom: '22px', letterSpacing: '0.04em' }}>{note}</div>
+                {vals.map((val, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                    <input type="text" value={val} placeholder={`Goal ${i + 1}`}
+                      onChange={e => upd(setter, vals, i, e.target.value)}
+                      style={inputStyle} />
+                    {vals.length > min && (
+                      <button type="button" onClick={() => remSlot(setter, vals, i)}
+                        style={{ background: 'none', border: 'none', color: T.muted, fontSize: '16px', lineHeight: 1, padding: '0 4px', cursor: 'pointer' }}>×</button>
+                    )}
+                  </div>
+                ))}
+                {vals.length < MAX_GOALS && (
+                  <button type="button" onClick={() => addSlot(setter, vals)}
+                    style={{ background: 'none', border: 'none', color: T.muted, fontSize: '12px', letterSpacing: '0.06em', padding: '6px 0', cursor: 'pointer', fontFamily: FONT_SANS }}>
+                    + Add goal
                   </button>
                 )}
               </div>
-            );
-          })}
+            </React.Fragment>
+          ))}
+        </div>
 
-          {error && <p style={{ color: '#E05A5A', fontSize: '13px', marginBottom: '16px', fontFamily: 'Inter, sans-serif' }}>{error}</p>}
-
-          <button type="submit"
-            style={{ width: '100%', background: '#E8A838', color: '#0C0E14', border: 'none', padding: '15px 24px', fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 700, borderRadius: '6px', cursor: 'pointer', letterSpacing: '0.01em', transition: 'background 150ms' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#F2B540')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#E8A838')}>
-            Set my goals →
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <button onClick={() => { if (hasWeekly) onComplete({ weekly: makeGoals(weekly), monthly: makeGoals(monthly), yearly: makeGoals(yearly), onboardingComplete: true }); }}
+            disabled={!hasWeekly}
+            style={{
+              padding: '15px 60px',
+              background: hasWeekly ? T.accent : T.border2,
+              color:      hasWeekly ? T.accentText : T.muted,
+              border: 'none', fontSize: '11px', fontWeight: 700,
+              letterSpacing: '0.14em', textTransform: 'uppercase', borderRadius: '2px',
+              cursor: hasWeekly ? 'pointer' : 'default', fontFamily: FONT_SANS,
+            }}>
+            Set my goals
           </button>
-        </form>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Gate ────────────────────────────────────────────────────────────────────
-
-interface GateProps {
-  store: GoalStore;
-  onAcknowledge: () => void;
-  onToggleGoal: (category: 'weekly' | 'monthly' | 'yearly', id: string) => void;
-  fading: boolean;
-}
-
-function Gate({ store, onAcknowledge, onToggleGoal, fading }: GateProps) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') e.preventDefault(); };
-    window.addEventListener('keydown', handler, true);
-    return () => window.removeEventListener('keydown', handler, true);
-  }, []);
-
-  const hasGoals = store.weekly.length > 0 || store.monthly.length > 0 || store.yearly.length > 0;
-
+// ─── Gate ─────────────────────────────────────────────────────────────────────
+function Gate({ store, onAcknowledge }: { store: GoalStore; onAcknowledge: () => void }) {
+  const cols = [
+    { label: 'This Week',  goals: store.weekly },
+    { label: 'This Month', goals: store.monthly },
+    { label: 'This Year',  goals: store.yearly },
+  ];
   return (
-    <div style={{ minHeight: '100vh', background: '#0C0E14', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', position: 'relative', overflow: 'hidden', transition: 'opacity 200ms', opacity: fading ? 0 : 1 }}>
-      <BgGradient />
-      <div style={{ width: '100%', maxWidth: '520px', padding: '48px 30px', position: 'relative', zIndex: 1 }}>
-        <WeekErosionBar />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1, display: 'flex', flexDirection: 'column', color: T.text, fontFamily: FONT_SANS, animation: 'fadeIn 0.22s ease' }}>
+      <Background />
 
-        {!hasGoals ? (
-          <div style={{ textAlign: 'center', padding: '32px 0' }}>
-            <p style={{ color: '#5A6080', fontSize: '14px', marginBottom: '16px', fontFamily: 'Inter, sans-serif' }}>No goals set yet.</p>
-            <a href="#" onClick={(e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); }} style={{ color: '#E8A838', fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>
-              Add your goals →
-            </a>
-          </div>
-        ) : (
-          <div style={{ marginBottom: '40px' }}>
-            {store.weekly.length > 0 && (
-              <div style={{ marginBottom: '30px' }}>
-                <SectionLabel>This Week</SectionLabel>
-                {store.weekly.map((g) => <GoalItem key={g.id} goal={g} onToggle={() => onToggleGoal('weekly', g.id)} />)}
-              </div>
-            )}
-            {store.monthly.length > 0 && (
-              <div style={{ marginBottom: '30px' }}>
-                <SectionLabel>This Month</SectionLabel>
-                {store.monthly.map((g) => <GoalItem key={g.id} goal={g} onToggle={() => onToggleGoal('monthly', g.id)} />)}
-              </div>
-            )}
-            {store.yearly.length > 0 && (
-              <div>
-                <SectionLabel>This Year</SectionLabel>
-                {store.yearly.map((g) => <GoalItem key={g.id} goal={g} onToggle={() => onToggleGoal('yearly', g.id)} />)}
-              </div>
-            )}
-          </div>
-        )}
+      {/* Header */}
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 56px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+        <div style={{ fontSize: '11px', letterSpacing: '0.36em', textTransform: 'uppercase', fontWeight: 700 }}>Cinova</div>
+        <WeekTracker />
+      </div>
 
+      {/* 3-column confrontation */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', minHeight: 0 }}>
+        {cols.map(({ label, goals }, i) => (
+          <div key={label} style={{ flex: 1, padding: '44px 56px', overflowY: 'auto', borderRight: i < 2 ? `1px solid ${T.border}` : 'none' }}>
+            <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.26em', fontWeight: 700, color: T.muted, marginBottom: '28px' }}>{label}</div>
+            {goals.filter(g => g.text.trim()).map(g => (
+              <p key={g.id} style={{ fontSize: '27px', lineHeight: 1.3, fontWeight: 500, letterSpacing: '-0.01em', marginBottom: '26px', marginTop: 0 }}>
+                {g.text}
+              </p>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <div style={{ position: 'relative', zIndex: 1, padding: '22px 56px', borderTop: `1px solid ${T.border}`, flexShrink: 0 }}>
         <button onClick={onAcknowledge}
-          style={{ width: '100%', background: '#E8A838', color: '#0C0E14', border: 'none', padding: '15px 24px', fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 700, borderRadius: '6px', cursor: 'pointer', letterSpacing: '0.01em', transition: 'background 150ms' }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = '#F2B540')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = '#E8A838')}>
-          I see my goals — start browsing →
+          style={{
+            width: '100%', padding: '18px', background: T.accent, color: T.accentText,
+            border: 'none', fontSize: '11px', fontWeight: 700, letterSpacing: '0.14em',
+            textTransform: 'uppercase', borderRadius: '2px', cursor: 'pointer', fontFamily: FONT_SANS,
+          }}>
+          I see my goals — start browsing
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Dashboard ───────────────────────────────────────────────────────────────
-
-interface DashboardProps {
-  store: GoalStore;
-  onToggleGoal: (category: 'weekly' | 'monthly' | 'yearly', id: string) => void;
-  visible: boolean;
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+function useTime() {
+  const [t, setT] = useState(() => new Date());
+  useEffect(() => { const iv = setInterval(() => setT(new Date()), 1000); return () => clearInterval(iv); }, []);
+  return t;
 }
 
-function Dashboard({ store, onToggleGoal, visible }: DashboardProps) {
-  const [now, setNow] = useState(new Date());
-  const [query, setQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
+function SidebarSection({ label, goals, onToggle }: { label: string; goals: Goal[]; onToggle: (id: string) => void }) {
+  const visible = goals.filter(g => g.text.trim());
+  if (visible.length === 0) return null;
+  return (
+    <div style={{ marginBottom: '26px' }}>
+      <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, marginBottom: '12px' }}>{label}</div>
+      {visible.map(g => (
+        <div key={g.id} onClick={() => onToggle(g.id)}
+          style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '5px 0', cursor: 'pointer' }}>
+          <div style={{
+            width: '14px', height: '14px', minWidth: '14px', marginTop: '2px',
+            border: `1px solid ${T.border2}`, background: g.completed ? T.text : 'transparent',
+            borderRadius: '2px', flexShrink: 0, transition: 'background 0.12s',
+          }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: '12.5px', lineHeight: 1.42, opacity: g.completed ? 0.3 : 1, textDecoration: g.completed ? 'line-through' : 'none', transition: 'opacity 0.15s' }}>
+              {g.text}
+            </span>
+            {g.description && !g.completed && (
+              <p style={{ margin: '3px 0 0', fontSize: '11px', color: T.muted, lineHeight: 1.5, wordBreak: 'break-word' }}>
+                {linkify(g.description)}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (query.trim()) window.location.href = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-  }
-
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const dateStr = `${DAY_NAMES[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}`;
+function Dashboard({ store, onToggleGoal }: {
+  store: GoalStore;
+  onToggleGoal: (cat: 'weekly' | 'monthly' | 'yearly', id: string) => void;
+}) {
+  const now    = useTime();
+  const pad    = (n: number) => String(n).padStart(2, '0');
+  const hm     = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const ss     = pad(now.getSeconds());
+  const dateStr = `${WEEK_LONG[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+  const [search, setSearch] = useState('');
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0C0E14', display: 'flex', transition: 'opacity 150ms', opacity: visible ? 1 : 0, position: 'relative', overflow: 'hidden' }}>
-      <BgGradient />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1, display: 'flex', color: T.text, fontFamily: FONT_SANS, animation: 'fadeIn 0.22s ease' }}>
+      <Background />
 
       {/* Sidebar */}
-      <aside style={{ width: '240px', flexShrink: 0, background: 'rgba(19,22,31,0.92)', borderRight: '1px solid #1E2130', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 20px 16px', borderBottom: '1px solid #1E2130', flexShrink: 0 }}>
-          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: 700, color: '#E8EAF0', letterSpacing: '0.12em', textTransform: 'uppercase' }}>CINOVA</span>
+      <div style={{ position: 'relative', zIndex: 1, width: '256px', minWidth: '256px', display: 'flex', flexDirection: 'column', borderRight: `1px solid ${T.border}`, background: T.surface }}>
+        <div style={{ padding: '22px 24px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+          <div style={{ fontSize: '11px', letterSpacing: '0.36em', textTransform: 'uppercase', fontWeight: 700 }}>Cinova</div>
+        </div>
+        <div style={{ flex: 1, padding: '24px', overflowY: 'auto', minHeight: 0 }}>
+          <SidebarSection label="This Week"  goals={store.weekly}  onToggle={id => onToggleGoal('weekly', id)} />
+          <SidebarSection label="This Month" goals={store.monthly} onToggle={id => onToggleGoal('monthly', id)} />
+          <SidebarSection label="This Year"  goals={store.yearly}  onToggle={id => onToggleGoal('yearly', id)} />
+        </div>
+        <div style={{ padding: '14px 24px', borderTop: `1px solid ${T.border}`, flexShrink: 0 }}>
           <button onClick={() => chrome.runtime.openOptionsPage()}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: '2px', display: 'flex', alignItems: 'center', opacity: 0.5, transition: 'opacity 150ms' }}
-            title="Edit goals"
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.5')}>
-            <Pencil size={13} />
+            style={{ background: 'none', border: 'none', padding: 0, fontSize: '11px', letterSpacing: '0.08em', color: T.muted, fontWeight: 500, cursor: 'pointer', fontFamily: FONT_SANS }}>
+            Settings
           </button>
         </div>
+      </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 0' }}>
-          {[
-            { key: 'weekly' as const, label: 'Weekly' },
-            { key: 'monthly' as const, label: 'Monthly' },
-            { key: 'yearly' as const, label: 'Yearly' },
-          ].map(({ key, label }) => {
-            const goals = store[key];
-            if (goals.length === 0) return null;
-            return (
-              <div key={key} style={{ padding: '0 20px', marginBottom: '20px' }}>
-                <SectionLabel mb={8}>{label}</SectionLabel>
-                {goals.map((g) => <GoalItem key={g.id} goal={g} onToggle={() => onToggleGoal(key, g.id)} compact />)}
-              </div>
-            );
-          })}
-
-          {store.weekly.length === 0 && store.monthly.length === 0 && store.yearly.length === 0 && (
-            <div style={{ padding: '0 20px', color: '#5A6080', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
-              <p style={{ marginBottom: '8px', marginTop: 0 }}>No goals set.</p>
-              <button onClick={() => chrome.runtime.openOptionsPage()}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E8A838', padding: 0, fontFamily: 'Inter, sans-serif', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                Add goals <ExternalLink size={11} />
-              </button>
-            </div>
-          )}
+      {/* Main area */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '40px' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', userSelect: 'none' }}>
+          <span style={{ fontFamily: FONT_MONO, fontSize: '92px', fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1 }}>{hm}</span>
+          <span style={{ fontFamily: FONT_MONO, fontSize: '46px', fontWeight: 400, letterSpacing: '-0.02em', opacity: 0.32, paddingLeft: '4px' }}>:{ss}</span>
         </div>
-      </aside>
-
-      {/* Main */}
-      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
-        <div style={{ textAlign: 'center', width: '100%', maxWidth: '460px', padding: '0 40px' }}>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '72px', fontWeight: 700, color: '#E8EAF0', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '10px' }}>
-            {`${h}:${m}`}
-          </div>
-          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: '#5A6080', marginBottom: '44px', letterSpacing: '0.01em' }}>
-            {dateStr}
-          </div>
-          <form onSubmit={handleSearch}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(19,22,31,0.92)', border: `1px solid ${searchFocused ? '#E8A838' : '#1E2130'}`, borderRadius: '6px', padding: '12px 16px', transition: 'border-color 150ms' }}>
-              <Search size={16} style={{ flexShrink: 0, color: '#5A6080' }} />
-              <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Google..."
-                onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Inter, sans-serif', fontSize: '14px', color: '#E8EAF0', padding: 0 }}
-                autoFocus />
-            </div>
-          </form>
-        </div>
-      </main>
+        <div style={{ fontSize: '12px', letterSpacing: '0.14em', color: T.muted, textTransform: 'uppercase', fontWeight: 500, marginTop: '8px' }}>{dateStr}</div>
+        <form onSubmit={e => { e.preventDefault(); const q = search.trim(); if (q) window.location.href = `https://www.google.com/search?q=${encodeURIComponent(q)}`; }}
+          style={{ marginTop: '32px', width: '100%', maxWidth: '440px' }}>
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search Google"
+            style={{ width: '100%', padding: '13px 18px', background: T.surface, border: `1px solid ${T.border2}`, fontSize: '14px', color: T.text, borderRadius: '2px', letterSpacing: '0.01em', fontFamily: FONT_SANS }} />
+        </form>
+      </div>
     </div>
   );
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
-
-type View = 'loading' | 'onboarding' | 'gate' | 'dashboard';
-
 export default function NewTab() {
-  const [view, setView] = useState<View>('loading');
-  const [store, setStore_] = useState<GoalStore>(DEFAULT_STORE);
-  const [gateFading, setGateFading] = useState(false);
-  const [dashVisible, setDashVisible] = useState(false);
-  const initialized = useRef(false);
+  const [store, setLocalStore] = useState<GoalStore | null>(null);
+  useEffect(() => { getStore().then(setLocalStore); }, []);
 
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
-    getStore().then((s) => {
-      setStore_(s);
-      if (!s.onboardingComplete) { setView('onboarding'); return; }
-      const todayStr = new Date().toISOString().split('T')[0];
-      const acked = s.acknowledgedToday && s.lastAcknowledgedDate === todayStr;
-      if (acked) { setView('dashboard'); setDashVisible(true); } else setView('gate');
-    });
-  }, []);
+  async function handleOnboardingComplete(patch: Partial<GoalStore>) {
+    const newStore: GoalStore = { ...store!, ...patch, acknowledgedToday: true, lastAcknowledgedDate: new Date().toDateString() };
+    await setStore(newStore); setLocalStore(newStore);
+  }
 
-  const handleAcknowledge = useCallback(async () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const newStore: GoalStore = { ...store, acknowledgedToday: true, lastAcknowledgedDate: todayStr };
-    await setStore(newStore);
-    setStore_(newStore);
-    setGateFading(true);
-    setTimeout(() => {
-      setView('dashboard');
-      requestAnimationFrame(() => requestAnimationFrame(() => setDashVisible(true)));
-    }, 200);
-  }, [store]);
+  async function handleAcknowledge() {
+    const newStore: GoalStore = { ...store!, acknowledgedToday: true, lastAcknowledgedDate: new Date().toDateString() };
+    await setStore(newStore); setLocalStore(newStore);
+  }
 
-  const handleToggleGoal = useCallback(
-    async (category: 'weekly' | 'monthly' | 'yearly', id: string) => {
-      const newStore: GoalStore = { ...store, [category]: store[category].map((g) => g.id === id ? { ...g, completed: !g.completed } : g) };
-      setStore_(newStore);
-      await setStore(newStore);
-    },
-    [store]
-  );
+  async function handleToggleGoal(cat: 'weekly' | 'monthly' | 'yearly', id: string) {
+    const newStore: GoalStore = { ...store!, [cat]: store![cat].map(g => g.id === id ? { ...g, completed: !g.completed } : g) };
+    await setStore(newStore); setLocalStore(newStore);
+  }
 
-  const handleOnboardingComplete = useCallback((newStore: GoalStore) => { setStore_(newStore); setView('gate'); }, []);
+  if (!store) return <div style={{ position: 'fixed', inset: 0, background: '#0d0d0d' }}><Background /></div>;
+  if (!store.onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />;
 
-  if (view === 'loading') return <div style={{ minHeight: '100vh', background: '#0C0E14' }} />;
-  if (view === 'onboarding') return <Onboarding onComplete={handleOnboardingComplete} />;
-  if (view === 'gate') return <Gate store={store} onAcknowledge={handleAcknowledge} onToggleGoal={handleToggleGoal} fading={gateFading} />;
-  return <Dashboard store={store} onToggleGoal={handleToggleGoal} visible={dashVisible} />;
+  const today = new Date().toDateString();
+  const acked = store.acknowledgedToday && store.lastAcknowledgedDate === today;
+  if (!acked) return <Gate store={store} onAcknowledge={handleAcknowledge} />;
+
+  return <Dashboard store={store} onToggleGoal={handleToggleGoal} />;
 }
