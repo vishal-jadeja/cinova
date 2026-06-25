@@ -21,8 +21,7 @@ Replace your browser's new tab with a focused goal dashboard. Every tab open put
 <br />
 
 <div align="center">
-  <img src="docs/screenshots/newtab.png" alt="Cinova new tab dashboard" width="100%" style="border-radius:8px" />
-  <br /><sub>New tab dashboard — replace with your screenshot</sub>
+  <img src="https://github.com/user-attachments/assets/5307b0ea-ab11-4a94-84ef-79ebd184f714" alt="Cinova new tab dashboard" width="100%" style="border-radius:8px" />
 </div>
 
 ---
@@ -57,24 +56,13 @@ Replace your browser's new tab with a focused goal dashboard. Every tab open put
 
 ## Screenshots
 
-### New Tab
-<img src="docs/screenshots/newtab.png" alt="New tab page with sidebar goals and clock" width="100%" />
-
-> Replace `docs/screenshots/newtab.png` with a screenshot of the new tab page.
-
----
-
 ### Goals
-<img src="docs/screenshots/goals.png" alt="Goals editing page" width="100%" />
-
-> Replace `docs/screenshots/goals.png` with a screenshot of the goals editing page.
+<img src="https://github.com/user-attachments/assets/681a6502-dce7-4807-a5d2-ada084f789dd" alt="Goals editing page" width="100%" />
 
 ---
 
 ### Settings
-<img src="docs/screenshots/settings.png" alt="Settings page with background picker" width="100%" />
-
-> Replace `docs/screenshots/settings.png` with a screenshot of the settings page.
+<img src="https://github.com/user-attachments/assets/0112062b-9c53-4f0f-8287-77eca324f921" alt="Settings page with background picker" width="100%" />
 
 ---
 
