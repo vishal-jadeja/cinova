@@ -5,6 +5,7 @@ import { getStore, setStore } from '../utils/storage';
 
 const MAX_GOALS = 10;
 const MAX_LINKS = 5;
+const BG_IMG = 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80';
 
 interface LinkDraft {
   id: string;
@@ -50,11 +51,7 @@ function buildGoals(drafts: GoalDraft[]): Goal[] {
     .map((d) => {
       const validLinks = d.links
         .filter((l) => l.url.trim())
-        .map((l) => ({
-          id: l.id,
-          url: normalizeUrl(l.url.trim()),
-          label: l.label.trim() || l.url.trim(),
-        }));
+        .map((l) => ({ id: l.id, url: normalizeUrl(l.url.trim()), label: l.label.trim() || l.url.trim() }));
       return {
         id: d.id,
         text: d.text.trim(),
@@ -70,6 +67,25 @@ const CATEGORIES = [
   { key: 'monthly' as const, label: 'MONTHLY GOALS', note: '' },
   { key: 'yearly' as const, label: 'YEARLY GOALS', note: '' },
 ];
+
+const inputBase: React.CSSProperties = {
+  background: '#13161F',
+  border: '1px solid #1E2130',
+  color: '#E8EAF0',
+  fontSize: '14px',
+  padding: '11px 14px',
+  borderRadius: '4px',
+  outline: 'none',
+  fontFamily: 'Inter, sans-serif',
+  transition: 'border-color 150ms',
+  width: '100%',
+};
+
+const inputSm: React.CSSProperties = {
+  ...inputBase,
+  fontSize: '12px',
+  padding: '8px 12px',
+};
 
 export default function Options() {
   const [store, setLocalStore] = useState<GoalStore | null>(null);
@@ -91,8 +107,7 @@ export default function Options() {
   function toggleExpanded(id: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   }
@@ -106,48 +121,20 @@ export default function Options() {
   }
 
   function removeDraft(setter: Setter, id: string) {
-    setter((prev) => {
-      const next = prev.filter((d) => d.id !== id);
-      return next.length === 0 ? [emptyDraft()] : next;
-    });
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+    setter((prev) => { const next = prev.filter((d) => d.id !== id); return next.length === 0 ? [emptyDraft()] : next; });
+    setExpanded((prev) => { const next = new Set(prev); next.delete(id); return next; });
   }
 
   function addLink(setter: Setter, goalId: string) {
-    setter((prev) =>
-      prev.map((d) =>
-        d.id === goalId
-          ? { ...d, links: [...d.links, { id: crypto.randomUUID(), url: '', label: '' }] }
-          : d
-      )
-    );
+    setter((prev) => prev.map((d) => d.id === goalId ? { ...d, links: [...d.links, { id: crypto.randomUUID(), url: '', label: '' }] } : d));
   }
 
   function removeLink(setter: Setter, goalId: string, linkId: string) {
-    setter((prev) =>
-      prev.map((d) =>
-        d.id === goalId ? { ...d, links: d.links.filter((l) => l.id !== linkId) } : d
-      )
-    );
+    setter((prev) => prev.map((d) => d.id === goalId ? { ...d, links: d.links.filter((l) => l.id !== linkId) } : d));
   }
 
-  function updateLink(
-    setter: Setter,
-    goalId: string,
-    linkId: string,
-    patch: { url?: string; label?: string }
-  ) {
-    setter((prev) =>
-      prev.map((d) =>
-        d.id === goalId
-          ? { ...d, links: d.links.map((l) => (l.id === linkId ? { ...l, ...patch } : l)) }
-          : d
-      )
-    );
+  function updateLink(setter: Setter, goalId: string, linkId: string, patch: { url?: string; label?: string }) {
+    setter((prev) => prev.map((d) => d.id === goalId ? { ...d, links: d.links.map((l) => (l.id === linkId ? { ...l, ...patch } : l)) } : d));
   }
 
   async function handleSave() {
@@ -160,26 +147,23 @@ export default function Options() {
     };
     await setStore(newStore);
     setLocalStore(newStore);
-    setToast('Goals saved ✓');
-    setTimeout(() => setToast(''), 2000);
+    setToast('saved');
+    setTimeout(() => setToast(''), 2500);
   }
 
   async function handleResetWeekly() {
     if (!store) return;
-    const newStore: GoalStore = {
-      ...store,
-      weekly: store.weekly.map((g) => ({ ...g, completed: false })),
-    };
+    const newStore: GoalStore = { ...store, weekly: store.weekly.map((g) => ({ ...g, completed: false })) };
     await setStore(newStore);
     setLocalStore(newStore);
-    setToast('Weekly progress reset ✓');
-    setTimeout(() => setToast(''), 2000);
+    setToast('reset');
+    setTimeout(() => setToast(''), 2500);
   }
 
   if (!store) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-4 h-4 border border-accent rounded-full animate-spin border-t-transparent" />
+      <div style={{ minHeight: '100vh', background: '#0C0E14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '16px', height: '16px', border: '1.5px solid #E8A838', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
       </div>
     );
   }
@@ -191,85 +175,80 @@ export default function Options() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-text-primary py-12 px-6">
-      <div className="max-w-2xl mx-auto">
-        <h1
-          className="text-2xl font-bold mb-1"
-          style={{ fontFamily: 'Inter', letterSpacing: '0.02em' }}
-        >
-          Cinova
-        </h1>
-        <p className="text-text-secondary text-sm mb-10">Your goals. Every tab.</p>
+    <div style={{ minHeight: '100vh', background: '#0C0E14', color: '#E8EAF0', position: 'relative', overflow: 'hidden' }}>
+      {/* Bg blur */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+        <img src={BG_IMG} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(64px) saturate(0.55)', opacity: 0.18, transform: 'scale(1.12)' }} />
+      </div>
 
-        <div className="border-t border-border-subtle mb-10" />
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '48px 40px', position: 'relative', zIndex: 1 }}>
+        {/* Title */}
+        <div style={{ marginBottom: '28px' }}>
+          <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '22px', fontWeight: 700, color: '#E8EAF0', letterSpacing: '-0.01em', margin: '0 0 5px' }}>Cinova</h1>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#5A6080', margin: 0 }}>Your goals. Every tab.</p>
+        </div>
+
+        <div style={{ height: '1px', background: '#1E2130', marginBottom: '28px' }} />
 
         {CATEGORIES.map(({ key, label, note }) => {
           const { values, setter } = stateMap[key];
           const atMax = values.length >= MAX_GOALS;
 
           return (
-            <div key={key} className="mb-10">
-              <div className="flex items-baseline gap-3 mb-4">
-                <span
-                  className="text-text-secondary text-xs uppercase"
-                  style={{ fontFamily: 'JetBrains Mono', letterSpacing: '0.15em' }}
-                >
+            <div key={key} style={{ marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px', marginBottom: '12px' }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#5A6080', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
                   {label}
                 </span>
                 {note && (
-                  <span className="text-text-secondary text-xs" style={{ opacity: 0.5 }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: '#5A6080', letterSpacing: '0.06em' }}>
                     ({note})
                   </span>
                 )}
-                <span className="text-text-secondary text-xs ml-auto" style={{ opacity: 0.4 }}>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#5A6080', marginLeft: 'auto', opacity: 0.5 }}>
                   {values.filter((d) => d.text.trim()).length}/{MAX_GOALS}
                 </span>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {values.map((draft, i) => {
                   const isExpanded = expanded.has(draft.id);
-                  const hasContent =
-                    draft.description.trim() || draft.links.some((l) => l.url.trim());
+                  const hasContent = draft.description.trim() || draft.links.some((l) => l.url.trim());
 
                   return (
-                    <div
-                      key={draft.id}
-                      className="border border-border-subtle"
-                      style={{ borderRadius: '6px' }}
-                    >
+                    <div key={draft.id} style={{ border: '1px solid #1E2130', borderRadius: '4px', overflow: 'hidden' }}>
                       {/* Goal row */}
-                      <div className="flex items-center gap-2 px-3 py-2.5">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#13161F', padding: '0 12px' }}>
                         <input
                           type="text"
                           value={draft.text}
                           onChange={(e) => updateDraft(setter, draft.id, { text: e.target.value })}
                           placeholder={`Goal ${i + 1}`}
-                          className="flex-1 bg-transparent text-text-primary placeholder-text-secondary text-sm focus:outline-none"
-                          style={{ fontFamily: 'Inter' }}
+                          style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#E8EAF0', fontSize: '14px', padding: '11px 0', fontFamily: 'Inter, sans-serif' }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => toggleExpanded(draft.id)}
-                          className={`flex-shrink-0 flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
-                            isExpanded
-                              ? 'text-accent'
-                              : hasContent
-                              ? 'text-accent opacity-70 hover:opacity-100'
-                              : 'text-text-secondary hover:text-accent'
-                          }`}
-                          style={{ fontFamily: 'Inter', borderRadius: '4px' }}
+                        <button type="button" onClick={() => toggleExpanded(draft.id)}
+                          style={{
+                            flexShrink: 0,
+                            display: 'flex', alignItems: 'center', gap: '4px',
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: isExpanded ? '#E8A838' : hasContent ? '#E8A838' : '#5A6080',
+                            opacity: isExpanded || hasContent ? 1 : 0.6,
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize: '10px', letterSpacing: '0.06em',
+                            padding: '4px 6px',
+                            transition: 'color 150ms, opacity 150ms',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#E8A838'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.opacity = isExpanded || hasContent ? '1' : '0.6'; e.currentTarget.style.color = isExpanded ? '#E8A838' : hasContent ? '#E8A838' : '#5A6080'; }}
                         >
                           {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                          <span style={{ fontSize: '11px' }}>Details</span>
+                          Details
                         </button>
                         {values.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeDraft(setter, draft.id)}
-                            className="flex-shrink-0 text-text-secondary hover:text-danger transition-colors p-1"
-                            title="Remove goal"
-                          >
+                          <button type="button" onClick={() => removeDraft(setter, draft.id)}
+                            style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: '4px', display: 'flex', transition: 'color 150ms' }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = '#E05A5A')}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = '#5A6080')}>
                             <X size={13} />
                           </button>
                         )}
@@ -277,102 +256,64 @@ export default function Options() {
 
                       {/* Detail panel */}
                       {isExpanded && (
-                        <div
-                          className="px-3 pb-4 border-t border-border-subtle"
-                          style={{ background: 'rgba(255,255,255,0.02)' }}
-                        >
+                        <div style={{ padding: '16px', borderTop: '1px solid #1E2130', background: 'rgba(255,255,255,0.015)' }}>
                           {/* Description */}
-                          <div className="mt-3 mb-4">
-                            <label
-                              className="block text-text-secondary mb-1.5"
-                              style={{
-                                fontFamily: 'JetBrains Mono',
-                                fontSize: '10px',
-                                letterSpacing: '0.12em',
-                                textTransform: 'uppercase',
-                              }}
-                            >
+                          <div style={{ marginBottom: '16px' }}>
+                            <label style={{ display: 'block', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#5A6080', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px' }}>
                               Description
                             </label>
                             <textarea
                               value={draft.description}
-                              onChange={(e) =>
-                                updateDraft(setter, draft.id, { description: e.target.value })
-                              }
+                              onChange={(e) => updateDraft(setter, draft.id, { description: e.target.value })}
                               placeholder="Optional context, notes, or motivation…"
                               rows={3}
-                              className="w-full bg-surface border border-border-subtle text-text-primary placeholder-text-secondary px-3 py-2.5 text-sm focus:outline-none focus:border-accent transition-colors resize-none"
-                              style={{ borderRadius: '6px', fontFamily: 'Inter' }}
+                              style={{ ...inputBase, resize: 'none', borderRadius: '4px' }}
+                              onFocus={(e) => (e.currentTarget.style.borderColor = '#E8A838')}
+                              onBlur={(e) => (e.currentTarget.style.borderColor = '#1E2130')}
                             />
                           </div>
-
                           {/* Links */}
                           <div>
-                            <label
-                              className="block text-text-secondary mb-2"
-                              style={{
-                                fontFamily: 'JetBrains Mono',
-                                fontSize: '10px',
-                                letterSpacing: '0.12em',
-                                textTransform: 'uppercase',
-                              }}
-                            >
+                            <label style={{ display: 'block', fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#5A6080', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px' }}>
                               Links
                             </label>
-
                             {draft.links.length > 0 && (
-                              <div className="flex flex-col gap-2 mb-2">
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
                                 {draft.links.map((link) => (
-                                  <div key={link.id} className="flex items-center gap-2">
-                                    <input
-                                      type="text"
-                                      value={link.url}
-                                      onChange={(e) =>
-                                        updateLink(setter, draft.id, link.id, { url: e.target.value })
-                                      }
+                                  <div key={link.id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <input type="text" value={link.url}
+                                      onChange={(e) => updateLink(setter, draft.id, link.id, { url: e.target.value })}
                                       placeholder="https://…"
-                                      className="flex-1 bg-surface border border-border-subtle text-text-primary placeholder-text-secondary px-3 py-2 text-xs focus:outline-none focus:border-accent transition-colors"
-                                      style={{ borderRadius: '6px', fontFamily: 'Inter' }}
+                                      style={{ ...inputSm, flex: 1 }}
+                                      onFocus={(e) => (e.currentTarget.style.borderColor = '#E8A838')}
+                                      onBlur={(e) => (e.currentTarget.style.borderColor = '#1E2130')}
                                     />
-                                    <input
-                                      type="text"
-                                      value={link.label}
-                                      onChange={(e) =>
-                                        updateLink(setter, draft.id, link.id, {
-                                          label: e.target.value,
-                                        })
-                                      }
+                                    <input type="text" value={link.label}
+                                      onChange={(e) => updateLink(setter, draft.id, link.id, { label: e.target.value })}
                                       placeholder="Label (optional)"
-                                      className="w-36 bg-surface border border-border-subtle text-text-primary placeholder-text-secondary px-3 py-2 text-xs focus:outline-none focus:border-accent transition-colors"
-                                      style={{ borderRadius: '6px', fontFamily: 'Inter' }}
+                                      style={{ ...inputSm, width: '140px' }}
+                                      onFocus={(e) => (e.currentTarget.style.borderColor = '#E8A838')}
+                                      onBlur={(e) => (e.currentTarget.style.borderColor = '#1E2130')}
                                     />
-                                    <button
-                                      type="button"
-                                      onClick={() => removeLink(setter, draft.id, link.id)}
-                                      className="flex-shrink-0 text-text-secondary hover:text-danger transition-colors p-1"
-                                    >
+                                    <button type="button" onClick={() => removeLink(setter, draft.id, link.id)}
+                                      style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: '4px', display: 'flex', transition: 'color 150ms' }}
+                                      onMouseEnter={(e) => (e.currentTarget.style.color = '#E05A5A')}
+                                      onMouseLeave={(e) => (e.currentTarget.style.color = '#5A6080')}>
                                       <X size={12} />
                                     </button>
                                   </div>
                                 ))}
                               </div>
                             )}
-
                             {draft.links.length < MAX_LINKS ? (
-                              <button
-                                type="button"
-                                onClick={() => addLink(setter, draft.id)}
-                                className="flex items-center gap-1.5 text-text-secondary hover:text-accent transition-colors text-xs"
-                                style={{ fontFamily: 'Inter' }}
-                              >
-                                <Plus size={12} />
-                                Add link
+                              <button type="button" onClick={() => addLink(setter, draft.id)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: 0, fontFamily: 'Inter, sans-serif', fontSize: '12px', transition: 'color 150ms' }}
+                                onMouseEnter={(e) => (e.currentTarget.style.color = '#E8A838')}
+                                onMouseLeave={(e) => (e.currentTarget.style.color = '#5A6080')}>
+                                <Plus size={12} /> Add link
                               </button>
                             ) : (
-                              <p
-                                className="text-text-secondary text-xs"
-                                style={{ opacity: 0.5, fontFamily: 'Inter' }}
-                              >
+                              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#5A6080', opacity: 0.5, margin: 0 }}>
                                 Maximum {MAX_LINKS} links per goal
                               </p>
                             )}
@@ -385,20 +326,14 @@ export default function Options() {
               </div>
 
               {!atMax ? (
-                <button
-                  type="button"
-                  onClick={() => addDraft(setter)}
-                  className="flex items-center gap-1.5 mt-3 text-text-secondary hover:text-accent transition-colors text-xs"
-                  style={{ fontFamily: 'Inter' }}
-                >
-                  <Plus size={13} />
-                  Add goal
+                <button type="button" onClick={() => addDraft(setter)}
+                  style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: 0, fontFamily: 'Inter, sans-serif', fontSize: '12px', transition: 'color 150ms' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#E8A838')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#5A6080')}>
+                  <Plus size={13} /> Add goal
                 </button>
               ) : (
-                <p
-                  className="mt-3 text-text-secondary text-xs"
-                  style={{ opacity: 0.5, fontFamily: 'Inter' }}
-                >
+                <p style={{ marginTop: '10px', fontFamily: 'Inter, sans-serif', fontSize: '11px', color: '#5A6080', opacity: 0.5, margin: '10px 0 0' }}>
                   Maximum {MAX_GOALS} goals reached
                 </p>
               )}
@@ -406,43 +341,53 @@ export default function Options() {
           );
         })}
 
-        <button
-          onClick={handleSave}
-          className="flex items-center gap-2 bg-accent text-background font-semibold px-6 py-3 text-sm transition-all hover:brightness-110 hover:scale-[1.01] mb-12"
-          style={{ borderRadius: '6px', fontFamily: 'Inter' }}
-        >
-          <Save size={15} />
-          Save Goals
-        </button>
+        {/* Save */}
+        <div style={{ marginBottom: '32px' }}>
+          <button onClick={handleSave}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#E8A838', color: '#0C0E14', border: 'none', padding: '11px 22px', fontSize: '14px', fontWeight: 700, borderRadius: '6px', cursor: 'pointer', transition: 'background 150ms', letterSpacing: '0.01em', fontFamily: 'Inter, sans-serif' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#F2B540')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#E8A838')}>
+            <Save size={14} />
+            Save Goals
+          </button>
+        </div>
 
-        <div className="border-t border-border-subtle mb-8" />
+        <div style={{ height: '1px', background: '#1E2130', marginBottom: '28px' }} />
 
+        {/* Danger zone */}
         <div>
-          <div className="flex items-center gap-2 text-danger text-xs mb-4">
-            <span style={{ fontFamily: 'JetBrains Mono', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-              ⚠ Reset weekly goal progress
-            </span>
-          </div>
-          <p className="text-text-secondary text-sm mb-4">
-            Marks all weekly goals as incomplete without removing them.
+          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: '#E05A5A', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '8px', marginTop: 0 }}>
+            ⚠ Reset Weekly Goal Progress
           </p>
-          <button
-            onClick={handleResetWeekly}
-            className="flex items-center gap-2 border border-border-subtle text-text-secondary px-5 py-2.5 text-sm transition-all hover:border-danger hover:text-danger"
-            style={{ borderRadius: '6px', fontFamily: 'Inter' }}
-          >
-            <RotateCcw size={14} />
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: '#5A6080', lineHeight: 1.65, marginBottom: '16px', marginTop: 0 }}>
+            Clears all weekly completion checkmarks. Your goal text is preserved. This action cannot be undone.
+          </p>
+          <button onClick={handleResetWeekly}
+            style={{ background: 'transparent', color: '#E05A5A', border: '1px solid rgba(224,90,90,0.35)', padding: '9px 18px', fontSize: '13px', fontWeight: 600, borderRadius: '6px', cursor: 'pointer', transition: 'all 150ms', letterSpacing: '0.01em', fontFamily: 'Inter, sans-serif', display: 'flex', alignItems: 'center', gap: '8px' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(224,90,90,0.08)'; e.currentTarget.style.borderColor = '#E05A5A'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(224,90,90,0.35)'; }}>
+            <RotateCcw size={13} />
             Reset weekly progress
           </button>
         </div>
       </div>
 
+      {/* Toast — design spec */}
       {toast && (
-        <div
-          className="fixed bottom-6 right-6 bg-surface border border-border-subtle text-text-primary px-4 py-3 text-sm"
-          style={{ borderRadius: '6px', fontFamily: 'Inter' }}
-        >
-          {toast}
+        <div style={{
+          position: 'fixed', bottom: '20px', right: '20px',
+          background: '#13161F',
+          border: '1px solid #1E2130',
+          padding: '10px 16px',
+          borderRadius: '6px',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          pointerEvents: 'none',
+          zIndex: 50,
+        }}>
+          <span style={{ color: '#4CAF82', fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', lineHeight: 1 }}>✓</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#E8EAF0', letterSpacing: '0.06em' }}>
+            {toast === 'saved' ? 'Goals saved' : 'Progress reset'}
+          </span>
         </div>
       )}
     </div>

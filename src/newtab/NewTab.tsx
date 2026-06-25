@@ -1,23 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import {
-  CheckCircle2,
-  Circle,
-  ExternalLink,
-  Info,
-  Pencil,
-  Plus,
-  Search,
-  X,
-} from 'lucide-react';
-
-const MAX_GOALS = 10;
+import { ExternalLink, Info, Pencil, Plus, Search, X } from 'lucide-react';
 import { Goal, GoalStore } from '../types';
 import { DEFAULT_STORE, getStore, setStore } from '../utils/storage';
 
-type View = 'loading' | 'onboarding' | 'gate' | 'dashboard';
+const MAX_GOALS = 10;
+const BG_IMG = 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-// JS getDay(): 0=Sun, 1=Mon … 6=Sat  →  map to our 0-based Mon index
+const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
 function todayIndex(): number {
   const d = new Date().getDay();
   return d === 0 ? 6 : d - 1;
@@ -27,108 +17,175 @@ function daysLeftThisWeek(): number {
   return 6 - todayIndex();
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+// ─── Shared ───────────────────────────────────────────────────────────────────
+
+function BgBlur({ opacity = 0.28 }: { opacity?: number }) {
+  return (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      <img
+        src={BG_IMG}
+        alt=""
+        style={{
+          width: '100%', height: '100%', objectFit: 'cover',
+          filter: 'blur(64px) saturate(0.55)',
+          opacity,
+          transform: 'scale(1.12)',
+        }}
+      />
+    </div>
+  );
 }
 
-function formatDate(date: Date): string {
-  return date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+function SectionLabel({ children, mb = 12 }: { children: React.ReactNode; mb?: number }) {
+  return (
+    <p style={{
+      fontFamily: "'JetBrains Mono', monospace",
+      fontSize: '10px',
+      color: '#5A6080',
+      letterSpacing: '0.15em',
+      textTransform: 'uppercase',
+      margin: 0,
+      marginBottom: `${mb}px`,
+    }}>
+      {children}
+    </p>
+  );
 }
+
+// Circular badge — matches design exactly
+function GoalIcon({ completed, size }: { completed: boolean; size: number }) {
+  return (
+    <div style={{
+      width: size, height: size,
+      borderRadius: '50%',
+      flexShrink: 0,
+      background: completed ? '#4CAF82' : 'transparent',
+      border: completed ? '1.5px solid #4CAF82' : '1.5px solid #5A6080',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size <= 12 ? '8px' : '9px',
+      color: '#0C0E14',
+      fontWeight: 700,
+      lineHeight: 1,
+      transition: 'background 200ms, border-color 200ms',
+    }}>
+      {completed ? '✓' : ''}
+    </div>
+  );
+}
+
+// ─── WeekErosionBar ───────────────────────────────────────────────────────────
 
 function WeekErosionBar() {
   const current = todayIndex();
   const left = daysLeftThisWeek();
 
   return (
-    <div className="w-full mb-8">
-      <div className="flex gap-1 mb-2">
+    <div style={{ width: '100%', marginBottom: '40px' }}>
+      <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
         {DAYS.map((day, i) => {
           const isPast = i < current;
           const isToday = i === current;
-          const isFuture = i > current;
+          const fill = isPast || isToday ? '#E8A838' : '#1E2130';
+          const labelColor = isPast ? '#E8EAF0' : isToday ? '#E8A838' : '#5A6080';
 
           return (
-            <div key={day} className="flex-1 flex flex-col items-center gap-1">
-              <span
-                className="text-text-secondary text-xs"
-                style={{ fontFamily: 'JetBrains Mono', fontSize: '9px', letterSpacing: '0.1em' }}
-              >
-                {day.toUpperCase()}
-              </span>
-              <div
-                className="w-full h-1.5 relative overflow-hidden"
-                style={{ borderRadius: '2px', background: '#1E2130' }}
-              >
-                {isPast && (
-                  <div className="absolute inset-0 bg-accent" />
-                )}
-                {isToday && (
-                  <>
-                    <div className="absolute top-0 left-0 bottom-0 bg-accent" style={{ width: '50%' }} />
-                    <div
-                      className="absolute top-0 left-0 bottom-0 bg-accent animate-pulse"
-                      style={{ width: '50%', opacity: 0.6 }}
-                    />
-                  </>
-                )}
-                {isFuture && null}
+            <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+              {/* Bar: two equal halves — right half pulses on today */}
+              <div style={{ width: '100%', height: '4px', display: 'flex', overflow: 'hidden', borderRadius: '2px' }}>
+                <div style={{ flex: 1, background: fill }} />
+                <div style={{
+                  flex: 1,
+                  background: fill,
+                  animation: isToday ? 'pulseAmber 2s ease-in-out infinite' : 'none',
+                }} />
               </div>
+              <span style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '9px',
+                color: labelColor,
+                letterSpacing: '0.1em',
+                lineHeight: 1,
+              }}>
+                {day}
+              </span>
             </div>
           );
         })}
       </div>
-      <p className="text-text-secondary text-xs text-right" style={{ fontFamily: 'JetBrains Mono', letterSpacing: '0.08em' }}>
+      <p style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: '10px',
+        color: '#5A6080',
+        letterSpacing: '0.12em',
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        margin: 0,
+      }}>
         {left === 0 ? 'last day of the week' : `${left} day${left !== 1 ? 's' : ''} left this week`}
       </p>
     </div>
   );
 }
 
+// ─── GoalItem ─────────────────────────────────────────────────────────────────
+
 interface GoalItemProps {
   goal: Goal;
-  onClick?: () => void;
+  onToggle?: () => void;
   compact?: boolean;
   alwaysExpanded?: boolean;
 }
 
-function GoalItem({ goal, onClick, compact, alwaysExpanded }: GoalItemProps) {
+function GoalItem({ goal, onToggle, compact, alwaysExpanded }: GoalItemProps) {
   const [showDetail, setShowDetail] = useState(false);
   const hasDetail = !!(goal.description || (goal.links && goal.links.length > 0));
   const detailVisible = alwaysExpanded ? hasDetail : showDetail;
-  const iconSize = compact ? 13 : 15;
+  const iconSize = compact ? 12 : 15;
 
   return (
-    <div className={compact ? 'py-1' : 'py-1.5'}>
-      <div className="flex items-start gap-2">
-        <button
-          onClick={onClick}
-          disabled={!onClick}
-          className={`flex-shrink-0 mt-0.5 transition-opacity ${
-            onClick ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
-          }`}
-        >
-          {goal.completed ? (
-            <CheckCircle2 size={iconSize} className="text-success" />
-          ) : (
-            <Circle size={iconSize} className="text-text-secondary" />
-          )}
-        </button>
-
-        <span
-          className={`flex-1 text-sm leading-snug transition-all duration-200 ${
-            goal.completed ? 'line-through text-text-secondary' : 'text-text-primary'
-          }`}
-          style={{ fontFamily: 'Inter' }}
-        >
+    <div
+      onClick={onToggle}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        padding: compact ? '6px 0' : '10px 0',
+        borderBottom: '1px solid #1E2130',
+        cursor: onToggle ? 'pointer' : 'default',
+        userSelect: 'none',
+        transition: 'opacity 150ms',
+      }}
+      onMouseEnter={(e) => { if (onToggle) e.currentTarget.style.opacity = '0.7'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: compact ? '8px' : '10px' }}>
+        <GoalIcon completed={goal.completed} size={iconSize} />
+        <span style={{
+          fontFamily: 'Inter, sans-serif',
+          fontSize: compact ? '12px' : '14px',
+          color: goal.completed ? '#5A6080' : '#E8EAF0',
+          textDecoration: goal.completed ? 'line-through' : 'none',
+          transition: 'color 200ms, text-decoration 200ms',
+          lineHeight: compact ? 1.3 : 1.4,
+          flex: 1,
+          minWidth: 0,
+          ...(compact ? { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } : {}),
+        }}>
           {goal.text}
         </span>
-
         {hasDetail && !alwaysExpanded && (
           <button
-            onClick={() => setShowDetail((s) => !s)}
-            className={`flex-shrink-0 mt-0.5 transition-colors ${
-              showDetail ? 'text-accent' : 'text-text-secondary hover:text-accent'
-            }`}
+            onClick={(e) => { e.stopPropagation(); setShowDetail((s) => !s); }}
+            style={{
+              flexShrink: 0,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: showDetail ? '#E8A838' : '#5A6080',
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center',
+              transition: 'color 150ms',
+            }}
             title={showDetail ? 'Hide details' : 'Show details'}
           >
             <Info size={compact ? 11 : 12} />
@@ -138,28 +195,42 @@ function GoalItem({ goal, onClick, compact, alwaysExpanded }: GoalItemProps) {
 
       {detailVisible && (
         <div
-          className="mt-1.5 flex flex-col gap-1.5"
-          style={{ marginLeft: compact ? '19px' : '23px' }}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            marginLeft: compact ? '20px' : '25px',
+            marginTop: '8px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+          }}
         >
           {goal.description && (
-            <p
-              className="text-xs text-text-secondary leading-relaxed"
-              style={{ fontFamily: 'Inter' }}
-            >
+            <p style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '12px',
+              color: '#5A6080',
+              lineHeight: 1.55,
+              margin: 0,
+            }}>
               {goal.description}
             </p>
           )}
           {goal.links && goal.links.length > 0 && (
-            <div className="flex flex-col gap-0.5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
               {goal.links.map((link) => (
                 <a
                   key={link.id}
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-accent hover:underline w-fit"
-                  style={{ fontFamily: 'Inter' }}
-                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                    fontSize: '12px', color: '#E8A838',
+                    textDecoration: 'none',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = 'underline')}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = 'none')}
                 >
                   <ExternalLink size={compact ? 9 : 10} />
                   <span>{link.label || link.url}</span>
@@ -170,26 +241,6 @@ function GoalItem({ goal, onClick, compact, alwaysExpanded }: GoalItemProps) {
         </div>
       )}
     </div>
-  );
-}
-
-interface SectionLabelProps {
-  children: React.ReactNode;
-}
-
-function SectionLabel({ children }: SectionLabelProps) {
-  return (
-    <p
-      className="text-text-secondary mb-3"
-      style={{
-        fontFamily: 'JetBrains Mono',
-        fontSize: '10px',
-        letterSpacing: '0.15em',
-        textTransform: 'uppercase',
-      }}
-    >
-      {children}
-    </p>
   );
 }
 
@@ -245,93 +296,107 @@ function Onboarding({ onComplete }: OnboardingProps) {
     onComplete(newStore);
   }
 
+  const inputBase: React.CSSProperties = {
+    flex: 1,
+    background: '#13161F',
+    border: '1px solid #1E2130',
+    color: '#E8EAF0',
+    fontSize: '14px',
+    padding: '11px 14px',
+    borderRadius: '4px',
+    outline: 'none',
+    fontFamily: 'Inter, sans-serif',
+    transition: 'border-color 150ms',
+  };
+
+  const sections = [
+    {
+      label: 'Weekly Goals', required: true,
+      values: weekly, setter: setWeekly,
+      ph: (i: number) => i === 0 ? 'e.g. Ship the v1 prototype' : `Weekly goal ${i + 1}`,
+    },
+    {
+      label: 'Monthly Goals', required: false,
+      values: monthly, setter: setMonthly,
+      ph: (i: number) => i === 0 ? 'e.g. Complete the design system' : `Monthly goal ${i + 1}`,
+    },
+    {
+      label: 'Yearly Goals', required: false,
+      values: yearly, setter: setYearly,
+      ph: (i: number) => i === 0 ? 'e.g. Build and launch Cinova' : `Yearly goal ${i + 1}`,
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-6">
-      <div className="w-full max-w-[520px]">
-        <div className="mb-10">
-          <h1
-            className="text-3xl font-bold text-text-primary mb-2"
-            style={{ fontFamily: 'Inter', letterSpacing: '0.01em' }}
-          >
-            Cinova
-          </h1>
-          <p className="text-text-secondary text-sm">
-            Set your goals once. Face them every tab.
-          </p>
+    <div style={{ minHeight: '100vh', background: '#0C0E14', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', position: 'relative', overflow: 'hidden' }}>
+      <BgBlur opacity={0.18} />
+      <div style={{ width: '100%', maxWidth: '520px', padding: '48px 0', position: 'relative', zIndex: 1 }}>
+
+        <div style={{ marginBottom: '48px' }}>
+          <h1 style={{ fontFamily: 'Inter, sans-serif', fontSize: '32px', fontWeight: 700, color: '#E8EAF0', letterSpacing: '-0.025em', margin: '0 0 10px' }}>Cinova</h1>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: '#5A6080', lineHeight: 1.55, margin: 0 }}>Set your goals once. Face them every tab.</p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          {[
-            { label: 'Weekly Goals', note: 'resets every Monday', values: weekly, setter: setWeekly, required: true },
-            { label: 'Monthly Goals', note: '', values: monthly, setter: setMonthly, required: false },
-            { label: 'Yearly Goals', note: '', values: yearly, setter: setYearly, required: false },
-          ].map(({ label, note, values, setter, required }) => {
+          {sections.map(({ label, required, values, setter, ph }) => {
             const atMax = values.length >= MAX_GOALS;
             return (
-              <div key={label} className="mb-8">
-                <div className="flex items-baseline gap-2 mb-3">
-                  <SectionLabel>{label}</SectionLabel>
-                  {note && (
-                    <span className="text-text-secondary text-xs" style={{ opacity: 0.5 }}>
-                      {note}
+              <div key={label} style={{ marginBottom: '28px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                  <SectionLabel mb={0}>{label}</SectionLabel>
+                  {required && (
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '9px', color: '#E8A838',
+                      letterSpacing: '0.1em', textTransform: 'uppercase',
+                      border: '1px solid rgba(232,168,56,0.3)',
+                      padding: '2px 6px', borderRadius: '3px',
+                    }}>
+                      required
                     </span>
                   )}
-                  {required && (
-                    <span className="text-accent text-xs ml-auto">required</span>
-                  )}
                 </div>
-                <div className="flex flex-col gap-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {values.map((val, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <input
                         type="text"
                         value={val}
                         onChange={(e) => updateAt(setter, i, e.target.value)}
-                        placeholder={`Goal ${i + 1}${i === 0 && required ? ' *' : ''}`}
-                        className="flex-1 bg-surface border border-border-subtle text-text-primary placeholder-text-secondary px-4 py-3 text-sm focus:outline-none focus:border-accent transition-colors"
-                        style={{ borderRadius: '6px', fontFamily: 'Inter' }}
+                        placeholder={ph(i)}
+                        style={inputBase}
+                        onFocus={(e) => (e.currentTarget.style.borderColor = '#E8A838')}
+                        onBlur={(e) => (e.currentTarget.style.borderColor = '#1E2130')}
                       />
                       {values.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeGoal(setter, i)}
-                          className="flex-shrink-0 text-text-secondary hover:text-danger transition-colors p-1"
-                          title="Remove goal"
-                        >
+                        <button type="button" onClick={() => removeGoal(setter, i)}
+                          style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: '4px', display: 'flex' }}>
                           <X size={14} />
                         </button>
                       )}
                     </div>
                   ))}
                 </div>
-                {!atMax ? (
-                  <button
-                    type="button"
-                    onClick={() => addGoal(setter)}
-                    className="flex items-center gap-1.5 mt-3 text-text-secondary hover:text-accent transition-colors text-xs"
-                    style={{ fontFamily: 'Inter' }}
-                  >
-                    <Plus size={13} />
-                    Add goal
+                {!atMax && (
+                  <button type="button" onClick={() => addGoal(setter)}
+                    style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: 0, fontFamily: 'Inter, sans-serif', fontSize: '12px', transition: 'color 150ms' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#E8A838')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#5A6080')}>
+                    <Plus size={13} /> Add goal
                   </button>
-                ) : (
-                  <p className="mt-3 text-text-secondary text-xs" style={{ opacity: 0.5, fontFamily: 'Inter' }}>
-                    Maximum {MAX_GOALS} goals reached
-                  </p>
                 )}
               </div>
             );
           })}
 
           {error && (
-            <p className="text-danger text-sm mb-4">{error}</p>
+            <p style={{ color: '#E05A5A', fontSize: '13px', marginBottom: '16px', fontFamily: 'Inter, sans-serif' }}>{error}</p>
           )}
 
-          <button
-            type="submit"
-            className="w-full bg-accent text-background font-semibold py-4 text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.99]"
-            style={{ borderRadius: '6px', fontFamily: 'Inter', letterSpacing: '0.04em' }}
-          >
+          <button type="submit"
+            style={{ width: '100%', background: '#E8A838', color: '#0C0E14', border: 'none', padding: '15px 24px', fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 700, borderRadius: '6px', cursor: 'pointer', letterSpacing: '0.01em', transition: 'background 150ms' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#F2B540')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#E8A838')}>
             Set my goals →
           </button>
         </form>
@@ -345,58 +410,53 @@ function Onboarding({ onComplete }: OnboardingProps) {
 interface GateProps {
   store: GoalStore;
   onAcknowledge: () => void;
+  onToggleGoal: (category: 'weekly' | 'monthly' | 'yearly', id: string) => void;
   fading: boolean;
 }
 
-function Gate({ store, onAcknowledge, fading }: GateProps) {
+function Gate({ store, onAcknowledge, onToggleGoal, fading }: GateProps) {
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') e.preventDefault();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') e.preventDefault(); };
     window.addEventListener('keydown', handler, true);
     return () => window.removeEventListener('keydown', handler, true);
   }, []);
 
-  const hasGoals =
-    store.weekly.length > 0 || store.monthly.length > 0 || store.yearly.length > 0;
+  const hasGoals = store.weekly.length > 0 || store.monthly.length > 0 || store.yearly.length > 0;
 
   return (
-    <div
-      className="min-h-screen bg-background flex items-center justify-center px-6 transition-opacity duration-200"
-      style={{ opacity: fading ? 0 : 1 }}
-    >
-      <div className="w-full max-w-[520px]">
+    <div style={{
+      minHeight: '100vh', background: '#0C0E14',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '0 24px', position: 'relative', overflow: 'hidden',
+      transition: 'opacity 200ms', opacity: fading ? 0 : 1,
+    }}>
+      <BgBlur opacity={0.28} />
+      <div style={{ width: '100%', maxWidth: '520px', padding: '48px 30px', position: 'relative', zIndex: 1 }}>
         <WeekErosionBar />
 
         {!hasGoals ? (
-          <div className="text-center py-8">
-            <p className="text-text-secondary text-sm mb-4">No goals set yet.</p>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                chrome.runtime.openOptionsPage();
-              }}
-              className="text-accent text-sm underline"
-            >
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <p style={{ color: '#5A6080', fontSize: '14px', marginBottom: '16px', fontFamily: 'Inter, sans-serif' }}>No goals set yet.</p>
+            <a href="#" onClick={(e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); }}
+              style={{ color: '#E8A838', fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>
               Add your goals →
             </a>
           </div>
         ) : (
-          <div className="flex flex-col gap-8 mb-10">
+          <div style={{ marginBottom: '40px' }}>
             {store.weekly.length > 0 && (
-              <div>
+              <div style={{ marginBottom: '30px' }}>
                 <SectionLabel>This Week</SectionLabel>
                 {store.weekly.map((g) => (
-                  <GoalItem key={g.id} goal={g} alwaysExpanded />
+                  <GoalItem key={g.id} goal={g} onToggle={() => onToggleGoal('weekly', g.id)} alwaysExpanded />
                 ))}
               </div>
             )}
             {store.monthly.length > 0 && (
-              <div>
+              <div style={{ marginBottom: '30px' }}>
                 <SectionLabel>This Month</SectionLabel>
                 {store.monthly.map((g) => (
-                  <GoalItem key={g.id} goal={g} alwaysExpanded />
+                  <GoalItem key={g.id} goal={g} onToggle={() => onToggleGoal('monthly', g.id)} alwaysExpanded />
                 ))}
               </div>
             )}
@@ -404,18 +464,17 @@ function Gate({ store, onAcknowledge, fading }: GateProps) {
               <div>
                 <SectionLabel>This Year</SectionLabel>
                 {store.yearly.map((g) => (
-                  <GoalItem key={g.id} goal={g} alwaysExpanded />
+                  <GoalItem key={g.id} goal={g} onToggle={() => onToggleGoal('yearly', g.id)} alwaysExpanded />
                 ))}
               </div>
             )}
           </div>
         )}
 
-        <button
-          onClick={onAcknowledge}
-          className="w-full bg-accent text-background font-semibold py-4 text-sm tracking-wide transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.99]"
-          style={{ borderRadius: '6px', fontFamily: 'Inter', letterSpacing: '0.04em' }}
-        >
+        <button onClick={onAcknowledge}
+          style={{ width: '100%', background: '#E8A838', color: '#0C0E14', border: 'none', padding: '15px 24px', fontFamily: 'Inter, sans-serif', fontSize: '15px', fontWeight: 700, borderRadius: '6px', cursor: 'pointer', letterSpacing: '0.01em', transition: 'background 150ms' }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = '#F2B540')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = '#E8A838')}>
           I see my goals — start browsing →
         </button>
       </div>
@@ -434,6 +493,7 @@ interface DashboardProps {
 function Dashboard({ store, onToggleGoal, visible }: DashboardProps) {
   const [now, setNow] = useState(new Date());
   const [query, setQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -447,102 +507,110 @@ function Dashboard({ store, onToggleGoal, visible }: DashboardProps) {
     }
   }
 
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const dateStr = `${DAY_NAMES[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}`;
+
   return (
-    <div
-      className="min-h-screen bg-background flex transition-opacity duration-150"
-      style={{ opacity: visible ? 1 : 0 }}
-    >
+    <div style={{
+      minHeight: '100vh', background: '#0C0E14',
+      display: 'flex',
+      transition: 'opacity 150ms', opacity: visible ? 1 : 0,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <BgBlur opacity={0.28} />
+
       {/* Sidebar */}
-      <aside
-        className="flex-shrink-0 flex flex-col py-6 px-5 overflow-y-auto"
-        style={{
-          width: '240px',
-          background: '#13161F',
-          borderRight: '1px solid #1E2130',
-        }}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <span
-            className="text-text-primary font-bold text-sm"
-            style={{ fontFamily: 'Inter', letterSpacing: '0.04em' }}
-          >
+      <aside style={{
+        width: '240px', flexShrink: 0,
+        background: '#13161F',
+        borderRight: '1px solid #1E2130',
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+        position: 'relative', zIndex: 1,
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '20px 20px 16px',
+          borderBottom: '1px solid #1E2130',
+          flexShrink: 0,
+        }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px', fontWeight: 700, color: '#E8EAF0', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             CINOVA
           </span>
-          <button
-            onClick={() => chrome.runtime.openOptionsPage()}
-            className="text-text-secondary hover:text-accent transition-colors p-1"
+          <button onClick={() => chrome.runtime.openOptionsPage()}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#5A6080', padding: '2px', display: 'flex', alignItems: 'center', opacity: 0.5, transition: 'opacity 150ms' }}
             title="Edit goals"
-          >
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.5')}>
             <Pencil size={13} />
           </button>
         </div>
 
-        {[
-          { key: 'weekly' as const, label: 'Weekly' },
-          { key: 'monthly' as const, label: 'Monthly' },
-          { key: 'yearly' as const, label: 'Yearly' },
-        ].map(({ key, label }) => {
-          const goals = store[key];
-          if (goals.length === 0) return null;
-          return (
-            <div key={key} className="mb-6">
-              <SectionLabel>{label}</SectionLabel>
-              {goals.map((g) => (
-                <GoalItem
-                  key={g.id}
-                  goal={g}
-                  onClick={() => onToggleGoal(key, g.id)}
-                  compact
-                />
-              ))}
-            </div>
-          );
-        })}
+        {/* Goal lists */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 0' }}>
+          {[
+            { key: 'weekly' as const, label: 'Weekly' },
+            { key: 'monthly' as const, label: 'Monthly' },
+            { key: 'yearly' as const, label: 'Yearly' },
+          ].map(({ key, label }) => {
+            const goals = store[key];
+            if (goals.length === 0) return null;
+            return (
+              <div key={key} style={{ padding: '0 20px', marginBottom: '20px' }}>
+                <SectionLabel mb={8}>{label}</SectionLabel>
+                {goals.map((g) => (
+                  <GoalItem key={g.id} goal={g} onToggle={() => onToggleGoal(key, g.id)} compact />
+                ))}
+              </div>
+            );
+          })}
 
-        {store.weekly.length === 0 && store.monthly.length === 0 && store.yearly.length === 0 && (
-          <div className="text-text-secondary text-xs mt-2">
-            <p className="mb-2">No goals set.</p>
-            <button
-              onClick={() => chrome.runtime.openOptionsPage()}
-              className="text-accent hover:underline flex items-center gap-1"
-            >
-              Add goals <ExternalLink size={11} />
-            </button>
-          </div>
-        )}
+          {store.weekly.length === 0 && store.monthly.length === 0 && store.yearly.length === 0 && (
+            <div style={{ padding: '0 20px', color: '#5A6080', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+              <p style={{ marginBottom: '8px', marginTop: 0 }}>No goals set.</p>
+              <button onClick={() => chrome.runtime.openOptionsPage()}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#E8A838', padding: 0, fontFamily: 'Inter, sans-serif', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                Add goals <ExternalLink size={11} />
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col items-center justify-center px-8">
-        <div className="w-full max-w-lg flex flex-col items-center gap-8">
-          <div className="text-center">
-            <div
-              className="text-6xl font-bold text-text-primary mb-1"
-              style={{ fontFamily: 'Inter', fontWeight: 700, letterSpacing: '-0.02em' }}
-            >
-              {formatTime(now)}
-            </div>
-            <div
-              className="text-text-secondary text-sm"
-              style={{ fontFamily: 'Inter' }}
-            >
-              {formatDate(now)}
-            </div>
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ textAlign: 'center', width: '100%', maxWidth: '460px', padding: '0 40px' }}>
+          {/* Clock */}
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '72px', fontWeight: 700, color: '#E8EAF0', letterSpacing: '-0.04em', lineHeight: 1, marginBottom: '10px' }}>
+            {`${h}:${m}`}
           </div>
-
-          <form onSubmit={handleSearch} className="w-full">
-            <div
-              className="flex items-center gap-3 bg-surface border border-border-subtle px-4 py-3 focus-within:border-accent transition-colors"
-              style={{ borderRadius: '6px' }}
-            >
-              <Search size={16} className="text-text-secondary flex-shrink-0" />
+          {/* Date */}
+          <div style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: '#5A6080', marginBottom: '44px', letterSpacing: '0.01em' }}>
+            {dateStr}
+          </div>
+          {/* Search */}
+          <form onSubmit={handleSearch}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '10px',
+              background: '#13161F',
+              border: `1px solid ${searchFocused ? '#E8A838' : '#1E2130'}`,
+              borderRadius: '6px',
+              padding: '12px 16px',
+              transition: 'border-color 150ms',
+            }}>
+              <Search size={16} style={{ flexShrink: 0, color: '#5A6080' }} />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search Google..."
-                className="flex-1 bg-transparent text-text-primary placeholder-text-secondary text-sm focus:outline-none"
-                style={{ fontFamily: 'Inter' }}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontFamily: 'Inter, sans-serif', fontSize: '14px', color: '#E8EAF0', padding: 0 }}
                 autoFocus
               />
             </div>
@@ -554,6 +622,8 @@ function Dashboard({ store, onToggleGoal, visible }: DashboardProps) {
 }
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
+
+type View = 'loading' | 'onboarding' | 'gate' | 'dashboard';
 
 export default function NewTab() {
   const [view, setView] = useState<View>('loading');
@@ -568,38 +638,23 @@ export default function NewTab() {
 
     getStore().then((s) => {
       setStore_(s);
-      if (!s.onboardingComplete) {
-        setView('onboarding');
-        return;
-      }
+      if (!s.onboardingComplete) { setView('onboarding'); return; }
       const todayStr = new Date().toISOString().split('T')[0];
       const acked = s.acknowledgedToday && s.lastAcknowledgedDate === todayStr;
-      if (acked) {
-        setView('dashboard');
-        setDashVisible(true);
-      } else {
-        setView('gate');
-      }
+      if (acked) { setView('dashboard'); setDashVisible(true); }
+      else setView('gate');
     });
   }, []);
 
   const handleAcknowledge = useCallback(async () => {
     const todayStr = new Date().toISOString().split('T')[0];
-    const newStore: GoalStore = {
-      ...store,
-      acknowledgedToday: true,
-      lastAcknowledgedDate: todayStr,
-    };
+    const newStore: GoalStore = { ...store, acknowledgedToday: true, lastAcknowledgedDate: todayStr };
     await setStore(newStore);
     setStore_(newStore);
-
-    // fade gate out, then show dashboard
     setGateFading(true);
     setTimeout(() => {
       setView('dashboard');
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setDashVisible(true));
-      });
+      requestAnimationFrame(() => requestAnimationFrame(() => setDashVisible(true)));
     }, 200);
   }, [store]);
 
@@ -607,9 +662,7 @@ export default function NewTab() {
     async (category: 'weekly' | 'monthly' | 'yearly', id: string) => {
       const newStore: GoalStore = {
         ...store,
-        [category]: store[category].map((g) =>
-          g.id === id ? { ...g, completed: !g.completed } : g
-        ),
+        [category]: store[category].map((g) => g.id === id ? { ...g, completed: !g.completed } : g),
       };
       setStore_(newStore);
       await setStore(newStore);
@@ -622,29 +675,20 @@ export default function NewTab() {
     setView('gate');
   }, []);
 
-  if (view === 'loading') {
-    return <div className="min-h-screen bg-background" />;
-  }
+  if (view === 'loading') return <div style={{ minHeight: '100vh', background: '#0C0E14' }} />;
 
-  if (view === 'onboarding') {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
-  }
+  if (view === 'onboarding') return <Onboarding onComplete={handleOnboardingComplete} />;
 
   if (view === 'gate') {
     return (
       <Gate
         store={store}
         onAcknowledge={handleAcknowledge}
+        onToggleGoal={handleToggleGoal}
         fading={gateFading}
       />
     );
   }
 
-  return (
-    <Dashboard
-      store={store}
-      onToggleGoal={handleToggleGoal}
-      visible={dashVisible}
-    />
-  );
+  return <Dashboard store={store} onToggleGoal={handleToggleGoal} visible={dashVisible} />;
 }
