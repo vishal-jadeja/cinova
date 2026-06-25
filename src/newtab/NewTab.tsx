@@ -270,6 +270,11 @@ function useTime() {
   return t;
 }
 
+function urlLabel(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ''); }
+  catch { return url; }
+}
+
 function SidebarSection({ label, goals, onToggle }: { label: string; goals: Goal[]; onToggle: (id: string) => void }) {
   const visible = goals.filter(g => g.text.trim());
   if (visible.length === 0) return null;
@@ -286,6 +291,22 @@ function SidebarSection({ label, goals, onToggle }: { label: string; goals: Goal
             <span style={{ display: 'block', fontSize: '12.5px', lineHeight: 1.42, opacity: g.completed ? 0.3 : 1, textDecoration: g.completed ? 'line-through' : 'none', transition: 'opacity 0.15s' }}>
               {g.text}
             </span>
+            {(() => {
+              const urls = g.description ? extractUrls(g.description) : [];
+              return urls.length > 0 && !g.completed ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 8px', marginTop: '3px' }}>
+                  {urls.map(url => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      style={{ fontSize: '11px', color: '#E8A838', opacity: 0.75, textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}
+                      onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                      onMouseLeave={e => (e.currentTarget.style.opacity = '0.75')}>
+                      ↗ {urlLabel(url)}
+                    </a>
+                  ))}
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
       ))}

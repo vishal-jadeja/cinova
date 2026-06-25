@@ -150,14 +150,14 @@ function GoalCard({
 
 // ─── Category Section ─────────────────────────────────────────────────────────
 function CategorySection({
-  label, values, setter, expanded, setExpanded, style,
+  label, values, setter, expanded, setExpanded, gridCards,
 }: {
   label: string;
   values: GoalDraft[];
   setter: Setter;
   expanded: Set<string>;
   setExpanded: React.Dispatch<React.SetStateAction<Set<string>>>;
-  style?: React.CSSProperties;
+  gridCards?: boolean;
 }) {
   const [newIds, setNewIds] = useState<Set<string>>(new Set());
 
@@ -185,14 +185,17 @@ function CategorySection({
   const atMax = values.length >= MAX_GOALS;
 
   return (
-    <div style={{ marginBottom: '48px', ...style }}>
+    <div style={{ marginBottom: '48px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
         <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, fontFamily: FONT_MONO }}>
           {label}
         </span>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={gridCards
+        ? { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }
+        : { display: 'flex', flexDirection: 'column', gap: '8px' }
+      }>
         {values.map((draft, i) => (
           <GoalCard
             key={draft.id}
@@ -294,7 +297,7 @@ export default function Options() {
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: viewMode === 'grid' ? 'none' : '600px', margin: '0 auto', padding: viewMode === 'grid' ? '52px 56px 80px' : '52px 40px 80px' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: viewMode === 'grid' ? '900px' : '600px', margin: '0 auto', padding: '52px 40px 80px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -327,32 +330,17 @@ export default function Options() {
         <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: '24px' }}>Goals</h1>
 
         {/* Goal sections */}
-        {viewMode === 'grid' ? (
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', marginBottom: '48px' }}>
-            {sections.map(({ key, label, values, setter }) => (
-              <CategorySection
-                key={key}
-                label={label}
-                values={values}
-                setter={setter}
-                expanded={expanded}
-                setExpanded={setExpanded}
-                style={{ flex: 1, minWidth: 0, marginBottom: 0 }}
-              />
-            ))}
-          </div>
-        ) : (
-          sections.map(({ key, label, values, setter }) => (
-            <CategorySection
-              key={key}
-              label={label}
-              values={values}
-              setter={setter}
-              expanded={expanded}
-              setExpanded={setExpanded}
-            />
-          ))
-        )}
+        {sections.map(({ key, label, values, setter }) => (
+          <CategorySection
+            key={key}
+            label={label}
+            values={values}
+            setter={setter}
+            expanded={expanded}
+            setExpanded={setExpanded}
+            gridCards={viewMode === 'grid'}
+          />
+        ))}
 
         {/* Divider */}
         <div style={{ height: '1px', background: T.border, marginBottom: '28px' }} />
