@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   Circle,
   ExternalLink,
+  Info,
   Pencil,
   Plus,
   Search,
@@ -87,41 +88,88 @@ interface GoalItemProps {
   goal: Goal;
   onClick?: () => void;
   compact?: boolean;
+  alwaysExpanded?: boolean;
 }
 
-function GoalItem({ goal, onClick, compact }: GoalItemProps) {
+function GoalItem({ goal, onClick, compact, alwaysExpanded }: GoalItemProps) {
+  const [showDetail, setShowDetail] = useState(false);
+  const hasDetail = !!(goal.description || (goal.links && goal.links.length > 0));
+  const detailVisible = alwaysExpanded ? hasDetail : showDetail;
+  const iconSize = compact ? 13 : 15;
+
   return (
-    <button
-      onClick={onClick}
-      disabled={!onClick}
-      className={`flex items-start gap-2 w-full text-left transition-all duration-200 ${
-        onClick ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
-      } ${compact ? 'py-1' : 'py-1.5'}`}
-    >
-      <span className="flex-shrink-0 mt-0.5">
-        {goal.completed ? (
-          <CheckCircle2
-            size={compact ? 13 : 15}
-            className="text-success"
-          />
-        ) : (
-          <Circle
-            size={compact ? 13 : 15}
-            className="text-text-secondary"
-          />
+    <div className={compact ? 'py-1' : 'py-1.5'}>
+      <div className="flex items-start gap-2">
+        <button
+          onClick={onClick}
+          disabled={!onClick}
+          className={`flex-shrink-0 mt-0.5 transition-opacity ${
+            onClick ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+          }`}
+        >
+          {goal.completed ? (
+            <CheckCircle2 size={iconSize} className="text-success" />
+          ) : (
+            <Circle size={iconSize} className="text-text-secondary" />
+          )}
+        </button>
+
+        <span
+          className={`flex-1 text-sm leading-snug transition-all duration-200 ${
+            goal.completed ? 'line-through text-text-secondary' : 'text-text-primary'
+          }`}
+          style={{ fontFamily: 'Inter' }}
+        >
+          {goal.text}
+        </span>
+
+        {hasDetail && !alwaysExpanded && (
+          <button
+            onClick={() => setShowDetail((s) => !s)}
+            className={`flex-shrink-0 mt-0.5 transition-colors ${
+              showDetail ? 'text-accent' : 'text-text-secondary hover:text-accent'
+            }`}
+            title={showDetail ? 'Hide details' : 'Show details'}
+          >
+            <Info size={compact ? 11 : 12} />
+          </button>
         )}
-      </span>
-      <span
-        className={`text-sm leading-snug transition-all duration-200 ${
-          goal.completed
-            ? 'line-through text-text-secondary'
-            : 'text-text-primary'
-        }`}
-        style={{ fontFamily: 'Inter' }}
-      >
-        {goal.text}
-      </span>
-    </button>
+      </div>
+
+      {detailVisible && (
+        <div
+          className="mt-1.5 flex flex-col gap-1.5"
+          style={{ marginLeft: compact ? '19px' : '23px' }}
+        >
+          {goal.description && (
+            <p
+              className="text-xs text-text-secondary leading-relaxed"
+              style={{ fontFamily: 'Inter' }}
+            >
+              {goal.description}
+            </p>
+          )}
+          {goal.links && goal.links.length > 0 && (
+            <div className="flex flex-col gap-0.5">
+              {goal.links.map((link) => (
+                <a
+                  key={link.id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-accent hover:underline w-fit"
+                  style={{ fontFamily: 'Inter' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink size={compact ? 9 : 10} />
+                  <span>{link.label || link.url}</span>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -340,7 +388,7 @@ function Gate({ store, onAcknowledge, fading }: GateProps) {
               <div>
                 <SectionLabel>This Week</SectionLabel>
                 {store.weekly.map((g) => (
-                  <GoalItem key={g.id} goal={g} />
+                  <GoalItem key={g.id} goal={g} alwaysExpanded />
                 ))}
               </div>
             )}
@@ -348,7 +396,7 @@ function Gate({ store, onAcknowledge, fading }: GateProps) {
               <div>
                 <SectionLabel>This Month</SectionLabel>
                 {store.monthly.map((g) => (
-                  <GoalItem key={g.id} goal={g} />
+                  <GoalItem key={g.id} goal={g} alwaysExpanded />
                 ))}
               </div>
             )}
@@ -356,7 +404,7 @@ function Gate({ store, onAcknowledge, fading }: GateProps) {
               <div>
                 <SectionLabel>This Year</SectionLabel>
                 {store.yearly.map((g) => (
-                  <GoalItem key={g.id} goal={g} />
+                  <GoalItem key={g.id} goal={g} alwaysExpanded />
                 ))}
               </div>
             )}
