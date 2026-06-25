@@ -79,6 +79,7 @@ function GoalCard({
       background: 'rgba(255,255,255,0.03)',
       overflow: 'hidden',
       transition: 'border-color 180ms',
+      animation: 'fadeIn 0.18s ease-out',
     }}>
       {/* Goal text row */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '0 14px', gap: '8px' }}>
@@ -115,7 +116,7 @@ function GoalCard({
 
       {/* Notes section — same card, visually connected */}
       {isExpanded && (
-        <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 14px 12px' }}>
+        <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 14px 12px', animation: 'slideDown 0.2s ease-out' }}>
           <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.16em', fontWeight: 600, color: T.muted, marginBottom: '8px', fontFamily: FONT_MONO }}>
             Notes
           </div>
@@ -268,7 +269,7 @@ export default function Options() {
   if (!store) {
     return (
       <div style={{ position: 'fixed', inset: 0, background: '#0d0d0d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ width: '16px', height: '16px', border: '1.5px solid #e8e8e8', borderTopColor: 'transparent', borderRadius: '50%' }} />
+        <div style={{ width: '16px', height: '16px', border: '1.5px solid #e8e8e8', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
       </div>
     );
   }
@@ -296,7 +297,9 @@ export default function Options() {
             <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1 }}>Goals</h1>
           </div>
           <button onClick={() => { window.location.href = chrome.runtime.getURL('src/newtab/index.html'); }}
-            style={{ marginTop: '4px', background: 'none', border: `1px solid ${T.border2}`, padding: '8px 16px', fontSize: '11px', color: T.muted, letterSpacing: '0.06em', borderRadius: '4px', fontWeight: 500, cursor: 'pointer', fontFamily: FONT_SANS }}>
+            style={{ marginTop: '4px', background: 'none', border: `1px solid ${T.border2}`, padding: '8px 16px', fontSize: '11px', color: T.muted, letterSpacing: '0.06em', borderRadius: '4px', fontWeight: 500, cursor: 'pointer', fontFamily: FONT_SANS, transition: 'opacity 150ms, border-color 150ms' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = T.border2)}>
             ← Back
           </button>
         </div>
@@ -332,7 +335,9 @@ export default function Options() {
           <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Reset weekly progress</div>
           <div style={{ fontSize: '13px', color: T.muted, lineHeight: 1.55 }}>Unchecks all weekly goals without deleting them.</div>
           <button onClick={handleResetWeekly}
-            style={{ marginTop: '4px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '4px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS }}>
+            style={{ marginTop: '4px', padding: '9px 18px', background: 'none', border: `1px solid ${T.border2}`, fontSize: '11px', fontWeight: 600, color: T.text, letterSpacing: '0.06em', borderRadius: '4px', alignSelf: 'flex-start', cursor: 'pointer', fontFamily: FONT_SANS, transition: 'opacity 150ms, border-color 150ms' }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(232,232,232,0.3)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = T.border2)}>
             Reset weekly progress
           </button>
         </div>

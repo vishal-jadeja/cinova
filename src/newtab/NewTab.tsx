@@ -103,7 +103,7 @@ function Checkbox({ checked }: { checked: boolean }) {
       transition: 'all 0.15s', flexShrink: 0,
     }}>
       {checked && (
-        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+        <svg width="9" height="7" viewBox="0 0 9 7" fill="none" style={{ animation: 'checkAppear 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}>
           <path d="M1 3L3.5 5.5L8 1" stroke="#0d0d0d" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
@@ -131,7 +131,7 @@ function GoalCard({ draft, index, canRemove, onUpdate, onRemove, autoFocusNotes 
   }, [expanded, autoFocusNotes]);
 
   return (
-    <div style={{ border: `1px solid ${focused ? 'rgba(232,232,232,0.24)' : 'rgba(232,232,232,0.1)'}`, borderRadius: '6px', background: 'rgba(255,255,255,0.03)', overflow: 'hidden', transition: 'border-color 180ms' }}>
+    <div style={{ border: `1px solid ${focused ? 'rgba(232,232,232,0.24)' : 'rgba(232,232,232,0.1)'}`, borderRadius: '6px', background: 'rgba(255,255,255,0.03)', overflow: 'hidden', transition: 'border-color 180ms', animation: 'fadeIn 0.18s ease-out' }}>
       {/* Goal text row */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '0 14px', gap: '8px' }}>
         <input
@@ -161,7 +161,7 @@ function GoalCard({ draft, index, canRemove, onUpdate, onRemove, autoFocusNotes 
 
       {/* Notes panel */}
       {expanded && (
-        <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 14px 12px' }}>
+        <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 14px 12px', animation: 'slideDown 0.2s ease-out' }}>
           <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.16em', fontWeight: 600, color: T.muted, marginBottom: '8px', fontFamily: FONT_MONO }}>Notes</div>
           <textarea
             ref={notesRef}
@@ -270,7 +270,7 @@ function Onboarding({ onComplete }: { onComplete: (patch: Partial<GoalStore>) =>
         <button
           onClick={() => { if (hasWeekly) onComplete({ weekly: buildGoals(weekly), monthly: buildGoals(monthly), yearly: buildGoals(yearly), onboardingComplete: true }); }}
           disabled={!hasWeekly}
-          style={{ padding: '12px 28px', background: hasWeekly ? T.accent : T.border2, color: hasWeekly ? T.accentText : T.muted, border: 'none', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '4px', cursor: hasWeekly ? 'pointer' : 'default', fontFamily: FONT_SANS }}>
+          style={{ padding: '12px 28px', background: hasWeekly ? T.accent : T.border2, color: hasWeekly ? T.accentText : T.muted, border: 'none', fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: '4px', cursor: hasWeekly ? 'pointer' : 'default', fontFamily: FONT_SANS, transition: 'background 350ms ease, color 350ms ease' }}>
           Set my goals
         </button>
 
@@ -294,7 +294,9 @@ function SidebarSection({ label, goals, onToggle }: { label: string; goals: Goal
       <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.22em', fontWeight: 700, color: T.muted, marginBottom: '12px' }}>{label}</div>
       {visible.map(g => (
         <div key={g.id} onClick={() => onToggle(g.id)}
-          style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '5px 0', cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '5px 8px', margin: '0 -8px', cursor: 'pointer', borderRadius: '4px', transition: 'background 150ms' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
           <Checkbox checked={g.completed} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: 'block', fontSize: '12.5px', lineHeight: 1.42, opacity: g.completed ? 0.3 : 1, textDecoration: g.completed ? 'line-through' : 'none', transition: 'opacity 0.15s' }}>
@@ -322,9 +324,10 @@ function Dashboard({ store, onToggleGoal }: {
   const ss = pad(now.getSeconds());
   const dateStr = `${WEEK_LONG[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
   const [search, setSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1, display: 'flex', flexDirection: 'column', color: T.text, fontFamily: FONT_SANS, animation: 'fadeIn 0.22s ease' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1, display: 'flex', flexDirection: 'column', color: T.text, fontFamily: FONT_SANS, animation: 'fadeIn 0.35s cubic-bezier(0.16,1,0.3,1)' }}>
       <Background />
 
       {/* Header strip */}
@@ -340,7 +343,7 @@ function Dashboard({ store, onToggleGoal }: {
           {/* Sidebar header with edit icon top-right */}
           <div style={{ padding: '16px 20px', borderBottom: `1px solid ${T.border}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', fontWeight: 700, color: T.muted }}>Goals</span>
-            <button onClick={() => chrome.runtime.openOptionsPage()}
+            <button onClick={() => { window.location.href = chrome.runtime.getURL('src/options/index.html'); }}
               title="Edit goals"
               style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', opacity: 0.6, transition: 'opacity 150ms' }}
               onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
@@ -378,7 +381,9 @@ function Dashboard({ store, onToggleGoal }: {
               </svg>
               <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="Search Google"
-                style={{ width: '100%', padding: '13px 16px 13px 40px', background: T.surface, border: `1px solid ${T.border2}`, fontSize: '14px', color: T.text, borderRadius: '4px', letterSpacing: '0.01em', fontFamily: FONT_SANS, outline: 'none' }} />
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                style={{ width: '100%', padding: '13px 16px 13px 40px', background: T.surface, border: `1px solid ${searchFocused ? 'rgba(232,232,232,0.28)' : T.border2}`, fontSize: '14px', color: T.text, borderRadius: '4px', letterSpacing: '0.01em', fontFamily: FONT_SANS, outline: 'none', transition: 'border-color 200ms' }} />
             </form>
           </div>
         </div>

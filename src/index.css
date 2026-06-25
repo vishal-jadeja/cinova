@@ -14,6 +14,20 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes checkAppear {
+  from { opacity: 0; transform: scale(0.3); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
@@ -26,8 +40,9 @@ body {
 
 input::placeholder { opacity: 0.28; }
 input:focus { outline: none; }
-button { font-family: 'Space Grotesk', sans-serif; cursor: pointer; }
+button { font-family: 'Space Grotesk', sans-serif; cursor: pointer; transition: opacity 150ms ease; }
 button:hover { opacity: 0.78; }
+a { transition: opacity 150ms ease; }
 
 ::-webkit-scrollbar { width: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
