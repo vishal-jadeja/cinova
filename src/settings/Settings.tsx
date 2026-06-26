@@ -193,7 +193,7 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto', background: 'rgba(10,10,10,0.18)' }}>
+    <div style={{ minHeight: '100vh', position: 'relative', color: T.text, fontFamily: FONT_SANS, overflowY: 'auto', overflowX: 'hidden', background: 'rgba(10,10,10,0.18)' }}>
 
       {/* Leave modal */}
       {showLeaveModal && (
@@ -225,7 +225,7 @@ export default function Settings() {
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,8,8,0.76)' }} />
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '880px', margin: '0 auto', padding: '52px 40px 80px' }}>
+      <div style={{ position: 'relative', zIndex: 1, maxWidth: '980px', margin: '0 auto', padding: '52px 40px 80px' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -245,7 +245,7 @@ export default function Settings() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', alignItems: 'start', marginBottom: '28px' }}>
 
           {/* Left column */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
 
             {/* Background card */}
             <div style={{ border: `1px solid ${T.border}`, borderRadius: '8px', overflow: 'hidden', background: T.surface }}>
@@ -337,11 +337,11 @@ export default function Settings() {
             {/* Pomodoro card */}
             <div style={{ border: `1px solid ${T.border}`, borderRadius: '8px', background: T.surface, padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.01em' }}>Pomodoro Timer</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <NumInput label="Work (min)" value={pomodoroWork} min={1} max={120} onChange={v => { setPomodoroWork(v); markDirty(); }} />
-                <NumInput label="Short break" value={pomodoroShortBreak} min={1} max={60} onChange={v => { setPomodoroShortBreak(v); markDirty(); }} />
-                <NumInput label="Long break" value={pomodoroLongBreak} min={1} max={120} onChange={v => { setPomodoroLongBreak(v); markDirty(); }} />
-                <NumInput label="Sessions" value={pomodoroSessions} min={1} max={10} onChange={v => { setPomodoroSessions(v); markDirty(); }} />
+                <NumInput label="Short break (min)" value={pomodoroShortBreak} min={1} max={60} onChange={v => { setPomodoroShortBreak(v); markDirty(); }} />
+                <NumInput label="Long break (min)" value={pomodoroLongBreak} min={1} max={120} onChange={v => { setPomodoroLongBreak(v); markDirty(); }} />
+                <NumInput label="Sessions before long" value={pomodoroSessions} min={1} max={10} onChange={v => { setPomodoroSessions(v); markDirty(); }} />
               </div>
               <div style={{ fontSize: '12px', color: T.muted, lineHeight: 1.5 }}>
                 After <strong style={{ color: T.text, fontWeight: 600 }}>{pomodoroSessions}</strong> work sessions, you'll get a {pomodoroLongBreak}-minute long break. Short breaks are {pomodoroShortBreak} minutes.

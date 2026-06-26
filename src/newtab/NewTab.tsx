@@ -291,6 +291,17 @@ function Onboarding({ onComplete }: { onComplete: (patch: Partial<GoalStore>) =>
 }
 
 // ─── Pomodoro ─────────────────────────────────────────────────────────────────
+function IconBtn({ onClick, children, title, muted }: { onClick: () => void; children: React.ReactNode; title?: string; muted?: boolean }) {
+  return (
+    <button onClick={onClick} title={title}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', color: muted ? T.muted : T.text, fontSize: '11px', padding: '3px 5px', lineHeight: 1, opacity: muted ? 0.5 : 0.75, transition: 'opacity 150ms', display: 'flex', alignItems: 'center' }}
+      onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+      onMouseLeave={e => (e.currentTarget.style.opacity = muted ? '0.5' : '0.75')}>
+      {children}
+    </button>
+  );
+}
+
 function playPing() {
   try {
     const ctx = new AudioContext();
@@ -306,10 +317,8 @@ function playPing() {
   } catch { /* ignore */ }
 }
 
-function PomodoroTimer({ settings }: { settings?: PomodoroSettings }) {
+function PomodoroTimer({ settings, compact = false }: { settings?: PomodoroSettings; compact?: boolean }) {
   const workDur = settings?.workDuration ?? 25;
-  const shortBreakDur = settings?.shortBreak ?? 5;
-  const longBreakDur = settings?.longBreak ?? 15;
   const sessionsBeforeLong = settings?.sessionsBeforeLong ?? 4;
 
   const [pstate, setPstate] = useState<PomodoroState>({ mode: 'idle', endTime: 0, running: false, sessionsCompleted: 0 });
@@ -338,14 +347,15 @@ function PomodoroTimer({ settings }: { settings?: PomodoroSettings }) {
     return () => clearInterval(iv);
   }, [pstate]);
 
-  const mins = Math.floor(remaining / 60000);
-  const secs = Math.floor((remaining % 60000) / 1000);
   const pad2 = (n: number) => String(n).padStart(2, '0');
-  const timeStr = pstate.mode === 'idle'
-    ? `${pad2(workDur)}:00`
+  const displayMs = pstate.mode === 'idle'
+    ? workDur * 60000
     : pstate.running
-      ? `${pad2(mins)}:${pad2(secs)}`
-      : `${pad2(Math.floor((pstate.endTime - (pstate.pausedAt ?? pstate.endTime)) / 60000))}:${pad2(Math.floor(((pstate.endTime - (pstate.pausedAt ?? pstate.endTime)) % 60000) / 1000))}`;
+      ? remaining
+      : Math.max(0, pstate.endTime - (pstate.pausedAt ?? pstate.endTime));
+  const mins = Math.floor(displayMs / 60000);
+  const secs = Math.floor((displayMs % 60000) / 1000);
+  const timeStr = `${pad2(mins)}:${pad2(secs)}`;
 
   const modeLabel = { idle: 'POMODORO', work: 'WORK', shortBreak: 'SHORT BREAK', longBreak: 'LONG BREAK' }[pstate.mode];
   const modeColor = pstate.mode === 'work' ? '#E8A838' : pstate.mode === 'idle' ? T.muted : 'rgba(232,232,232,0.6)';
@@ -382,55 +392,40 @@ function PomodoroTimer({ settings }: { settings?: PomodoroSettings }) {
     setPstate(next);
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '24px' }}>
-      <div style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.18em', color: modeColor, fontFamily: FONT_MONO, fontWeight: 700 }}>
-        {modeLabel}
-      </div>
-      <div style={{ fontFamily: FONT_MONO, fontSize: '32px', fontWeight: 400, letterSpacing: '-0.02em', color: pstate.mode === 'idle' ? T.muted : T.text, lineHeight: 1 }}>
-        {timeStr}
-      </div>
-      <div style={{ display: 'flex', gap: '6px', marginTop: '2px' }}>
-        {Array.from({ length: sessionsBeforeLong }, (_, i) => (
-          <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: i < completedInCycle ? '#E8A838' : 'rgba(232,232,232,0.15)', transition: 'background 300ms' }} />
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-        {pstate.mode === 'idle' && (
-          <button onClick={start}
-            style={{ padding: '7px 18px', background: 'rgba(232,232,232,0.08)', border: `1px solid ${T.border2}`, borderRadius: '4px', color: T.text, fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: FONT_SANS, letterSpacing: '0.06em', transition: 'background 150ms' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,232,232,0.14)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(232,232,232,0.08)')}>
-            ▶ Start
-          </button>
-        )}
-        {pstate.mode !== 'idle' && pstate.running && (
-          <button onClick={pause}
-            style={{ padding: '7px 18px', background: 'rgba(232,232,232,0.08)', border: `1px solid ${T.border2}`, borderRadius: '4px', color: T.text, fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: FONT_SANS, letterSpacing: '0.06em', transition: 'background 150ms' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,232,232,0.14)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(232,232,232,0.08)')}>
-            ⏸ Pause
-          </button>
-        )}
-        {pstate.mode !== 'idle' && !pstate.running && (
-          <button onClick={resume}
-            style={{ padding: '7px 18px', background: 'rgba(232,232,232,0.08)', border: `1px solid ${T.border2}`, borderRadius: '4px', color: T.text, fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: FONT_SANS, letterSpacing: '0.06em', transition: 'background 150ms' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(232,232,232,0.14)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(232,232,232,0.08)')}>
-            ▶ Resume
-          </button>
-        )}
+  // compact = header toolbar pill
+  if (compact) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '5px 10px', background: 'rgba(232,232,232,0.04)', border: `1px solid ${T.border}`, borderRadius: '6px' }}>
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: modeColor, flexShrink: 0, transition: 'background 300ms' }} />
+        <span style={{ fontFamily: FONT_MONO, fontSize: '14px', letterSpacing: '-0.01em', color: pstate.mode === 'idle' ? T.muted : T.text, minWidth: '42px', textAlign: 'center' }}>
+          {timeStr}
+        </span>
         {pstate.mode !== 'idle' && (
-          <button onClick={reset}
-            style={{ padding: '7px 14px', background: 'none', border: `1px solid rgba(232,232,232,0.08)`, borderRadius: '4px', color: T.muted, fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: FONT_SANS, letterSpacing: '0.06em', transition: 'all 150ms' }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = T.border2; e.currentTarget.style.color = T.text; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(232,232,232,0.08)'; e.currentTarget.style.color = T.muted; }}>
-            ↺ Reset
-          </button>
+          <span style={{ fontSize: '9px', color: T.muted, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginLeft: '2px' }}>
+            {modeLabel}
+          </span>
         )}
+        <div style={{ width: '1px', height: '14px', background: T.border, margin: '0 4px', flexShrink: 0 }} />
+        {/* Session dots */}
+        <div style={{ display: 'flex', gap: '3px', alignItems: 'center', marginRight: '4px' }}>
+          {Array.from({ length: sessionsBeforeLong }, (_, i) => (
+            <div key={i} style={{ width: '4px', height: '4px', borderRadius: '50%', background: i < completedInCycle ? '#E8A838' : 'rgba(232,232,232,0.15)', transition: 'background 300ms' }} />
+          ))}
+        </div>
+        {/* Controls */}
+        {pstate.mode === 'idle' ? (
+          <IconBtn onClick={start} title="Start pomodoro">▶</IconBtn>
+        ) : pstate.running ? (
+          <IconBtn onClick={pause} title="Pause">⏸</IconBtn>
+        ) : (
+          <IconBtn onClick={resume} title="Resume">▶</IconBtn>
+        )}
+        {pstate.mode !== 'idle' && <IconBtn onClick={reset} title="Reset" muted>↺</IconBtn>}
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -505,9 +500,10 @@ function SidebarSection({ label, goals, onToggle }: { label: string; goals: Goal
   );
 }
 
-function Dashboard({ store, onToggleGoal }: {
+function Dashboard({ store, onToggleGoal, onToggleFocusMode }: {
   store: GoalStore;
   onToggleGoal: (cat: 'weekly' | 'monthly' | 'yearly', id: string) => void;
+  onToggleFocusMode: () => void;
 }) {
   const now = useTime();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -545,8 +541,31 @@ function Dashboard({ store, onToggleGoal }: {
       <Background url={store.backgroundImage} />
 
       {/* Header strip */}
-      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', padding: '18px 36px 14px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
-        <img src={logoFull} alt="Cinova" style={{ height: '26px', display: 'block', opacity: 0.92 }} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 28px', borderBottom: `1px solid ${T.border}`, flexShrink: 0 }}>
+        <img src={logoFull} alt="Cinova" style={{ height: '24px', display: 'block', opacity: 0.92 }} />
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Focus mode toggle */}
+          <button onClick={onToggleFocusMode}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              background: store.focusMode ? 'rgba(232,184,56,0.1)' : 'rgba(232,232,232,0.04)',
+              border: `1px solid ${store.focusMode ? 'rgba(232,184,56,0.35)' : T.border}`,
+              borderRadius: '6px', padding: '5px 12px',
+              fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em',
+              color: store.focusMode ? '#E8A838' : T.muted,
+              cursor: 'pointer', fontFamily: FONT_SANS, transition: 'all 200ms',
+            }}
+            onMouseEnter={e => { if (!store.focusMode) { e.currentTarget.style.borderColor = T.border2; e.currentTarget.style.color = T.text; } }}
+            onMouseLeave={e => { if (!store.focusMode) { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.muted; } }}>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+              <circle cx="5.5" cy="5.5" r="4.5" stroke="currentColor" strokeWidth="1.2" />
+              <circle cx="5.5" cy="5.5" r="2" fill="currentColor" />
+            </svg>
+            Focus {store.focusMode ? 'on' : 'off'}
+          </button>
+          {/* Compact Pomodoro */}
+          <PomodoroTimer settings={store.pomodoroSettings} compact />
+        </div>
       </div>
 
       {/* Content row */}
@@ -554,12 +573,12 @@ function Dashboard({ store, onToggleGoal }: {
 
         {/* Sidebar */}
         <div style={{ position: 'relative', width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, display: 'flex', flexDirection: 'column', borderRight: `1px solid ${T.border}`, background: T.surface }}>
-          {/* Sidebar header with edit icon top-right */}
+          {/* Edit goals — top-right */}
           <button onClick={() => { window.location.href = chrome.runtime.getURL('src/options/index.html'); }}
             title="Edit goals"
-            style={{ position: 'absolute', top: '18px', right: '18px', background: 'none', border: 'none', cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', opacity: 0.6, transition: 'opacity 150ms' }}
+            style={{ position: 'absolute', top: '16px', right: '20px', zIndex: 3, background: 'none', border: 'none', cursor: 'pointer', color: T.muted, display: 'flex', alignItems: 'center', opacity: 0.55, transition: 'opacity 150ms' }}
             onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-            onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}>
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0.55')}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M9.5 2L12 4.5L5.5 11H3V8.5L9.5 2Z" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M8 3.5L10.5 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -583,9 +602,9 @@ function Dashboard({ store, onToggleGoal }: {
             const earned = (store.rewards ?? []).filter((r: Reward) => r.threshold <= pct);
             if (earned.length === 0) return null;
             return (
-              <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 20px' }}>
+              <div style={{ borderTop: `1px solid ${T.border}`, padding: '8px 16px' }}>
                 {earned.map((r: Reward) => (
-                  <div key={r.id} style={{ fontSize: '11px', color: '#E8A838', marginBottom: '4px', opacity: 0.9 }}>
+                  <div key={r.id} style={{ fontSize: '11px', color: '#E8A838', marginBottom: '3px', opacity: 0.9 }}>
                     🎁 {r.text}
                   </div>
                 ))}
@@ -593,15 +612,15 @@ function Dashboard({ store, onToggleGoal }: {
             );
           })()}
           {/* Sidebar footer — settings */}
-          <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 12px', display: 'flex', alignItems: 'center' }}>
+          <div style={{ borderTop: `1px solid ${T.border}`, padding: '10px 12px' }}>
             <button onClick={() => { window.location.href = chrome.runtime.getURL('src/settings/index.html'); }}
               title="Settings"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(232,232,232,0.55)', display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 150ms', padding: '4px 6px', fontSize: '11px', letterSpacing: '0.06em', fontFamily: FONT_SANS }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(232,232,232,0.45)', display: 'flex', alignItems: 'center', gap: '8px', transition: 'color 150ms', padding: '4px 6px', fontSize: '11px', letterSpacing: '0.06em', fontFamily: FONT_SANS }}
               onMouseEnter={e => (e.currentTarget.style.color = T.text)}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(232,232,232,0.55)')}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.3" />
-                <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.93 2.93l1.06 1.06M10.01 10.01l1.06 1.06M2.93 11.07l1.06-1.06M10.01 3.99l1.06-1.06" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(232,232,232,0.45)')}>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <circle cx="6.5" cy="6.5" r="1.8" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M6.5 1v1.3M6.5 10.7V12M1 6.5h1.3M11.2 6.5H12.5M2.4 2.4l.92.92M9.68 9.68l.92.92M2.4 10.6l.92-.92M9.68 3.32l.92-.92" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
               </svg>
               Settings
             </button>
@@ -632,7 +651,6 @@ function Dashboard({ store, onToggleGoal }: {
                 onBlur={() => setSearchFocused(false)}
                 style={{ width: '100%', padding: '13px 16px 13px 40px', background: T.surface, border: `1px solid ${searchFocused ? 'rgba(232,232,232,0.28)' : T.border2}`, fontSize: '14px', color: T.text, borderRadius: '4px', letterSpacing: '0.01em', fontFamily: FONT_SANS, outline: 'none', transition: 'border-color 200ms' }} />
             </form>
-            <PomodoroTimer settings={store.pomodoroSettings} />
           </div>
         </div>
 
@@ -660,8 +678,12 @@ export default function NewTab() {
     const newStore: GoalStore = { ...store!, [cat]: store![cat].map(g => g.id === id ? { ...g, completed: !g.completed } : g) };
     await setStore(newStore); setLocalStore(newStore);
   }
+  async function handleToggleFocusMode() {
+    const newStore: GoalStore = { ...store!, focusMode: !store!.focusMode };
+    await setStore(newStore); setLocalStore(newStore);
+  }
 
   if (!store) return <div style={{ position: 'fixed', inset: 0, background: '#0d0d0d' }}><Background /></div>;
   if (!store.onboardingComplete) return <Onboarding onComplete={handleOnboardingComplete} />;
-  return <Dashboard store={store} onToggleGoal={handleToggleGoal} />;
+  return <Dashboard store={store} onToggleGoal={handleToggleGoal} onToggleFocusMode={handleToggleFocusMode} />;
 }

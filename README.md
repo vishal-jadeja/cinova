@@ -45,6 +45,7 @@ Replace your browser's new tab with a focused goal dashboard. Every tab open put
 - **Blur + dark overlay** — text stays readable over any background
 
 ### Interface
+
 - **Resizable sidebar** — drag the edge to your preferred width; persists across sessions
 - **Live clock** — large monospace HH:MM display with running seconds
 - **Week tracker** — 7-day bar showing exactly where you are in the current week
