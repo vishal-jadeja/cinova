@@ -21,8 +21,9 @@ Replace your browser's new tab with a focused goal dashboard. Every tab open put
 <br />
 
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/5307b0ea-ab11-4a94-84ef-79ebd184f714" alt="Cinova new tab dashboard" width="100%" style="border-radius:8px" />
+  <img src="https://github.com/user-attachments/assets/3f1a296e-3451-49e5-83f2-190815606ea3" alt="Cinova new tab dashboard" width="100%" style="border-radius:8px" />
 </div>
+
 
 ---
 
@@ -79,11 +80,11 @@ Replace your browser's new tab with a focused goal dashboard. Every tab open put
 <table>
   <tr>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/681a6502-dce7-4807-a5d2-ada084f789dd" alt="Goals editing page" width="100%" />
+      <img src="https://github.com/user-attachments/assets/7a4b9f99-d74b-446d-bc3b-0801890679ab" alt="Goals editing page" width="100%" />
       <p align="center"><sub>Goals</sub></p>
     </td>
     <td width="50%">
-      <img src="https://github.com/user-attachments/assets/0112062b-9c53-4f0f-8287-77eca324f921" alt="Settings page with background picker" width="100%" />
+      <img src="https://github.com/user-attachments/assets/45878708-3058-4b56-9787-b91eb4261c57" alt="Settings page with background picker" width="100%" />
       <p align="center"><sub>Settings</sub></p>
     </td>
   </tr>
