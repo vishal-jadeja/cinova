@@ -71,6 +71,63 @@ Replace your browser's new tab with a focused goal dashboard. Every tab open put
 
 ---
 
+## Upcoming Features
+
+### Focus Mode
+
+Block distracting websites for a set duration. When a blocked site is visited, instead of loading it, Cinova redirects to a custom block page that shows your active goals — a reminder of what you're working toward.
+
+**Block durations**
+- **Custom time** — user picks any duration (e.g. 2h, 4h). Block auto-lifts when time expires.
+- **Lifetime** — no auto-expiry. The site stays blocked as long as the extension is installed.
+
+**Unblocking**
+- Timed blocks unblock automatically when the duration ends.
+- Lifetime blocks require deliberate friction: the user must type a confirmation phrase (e.g. *"I give up"*) before the site is removed from the block list. No accidental unblocking.
+
+**Block page**
+- Custom Cinova-branded page (not a browser error).
+- Displays the user's active weekly goals so the reason for blocking is front-and-center.
+- Shows how much time remains for timed blocks.
+
+**Management**
+- Block list lives in the extension settings.
+- Each entry shows: domain, duration type, and time remaining (for timed blocks).
+- Sites can be added and removed (with friction for lifetime blocks).
+
+**Technical scope**
+- Domain-level blocking (e.g. adding `twitter.com` blocks all `twitter.com` URLs).
+- Requires `declarativeNetRequest` permission in the manifest.
+- Timed blocks use `chrome.alarms` to auto-lift accurately (already permitted).
+
+---
+
+### Rewards Mode
+
+Define personal rewards tied to weekly goal completion. Completing enough goals unlocks the reward — a self-set incentive system that aligns treats with progress.
+
+**Defining rewards**
+- User creates one or more rewards, each with:
+  - A label (e.g. *"Netflix evening"*, *"Order takeout"*)
+  - A threshold: the number of weekly goals that must be checked off to unlock it
+- Multiple rewards per week, each with an independent threshold (e.g. Reward A unlocks at 2 goals, Reward B unlocks at 5 goals).
+
+**Unlock behavior**
+- A reward unlocks automatically when its threshold is reached.
+- Unlocked rewards appear visibly on the new tab dashboard.
+- Locked rewards are visible but marked as locked (motivational, not hidden).
+
+**Reset cycle**
+- All reward definitions and unlock states reset at the weekly goal reset.
+- Each week starts fresh: rewards are locked again, ready to be earned.
+
+**History**
+- Weekly data is persisted after each reset: which goals were set, which were completed, which rewards were earned.
+- A dedicated **History page** lets users review past weeks — read-only, for reflection and accountability.
+- Storage: `chrome.storage.local` (not sync) to handle the larger data volume.
+
+---
+
 ## Installation
 
 Cinova is not on the Chrome Web Store yet — load it manually as an unpacked extension.
